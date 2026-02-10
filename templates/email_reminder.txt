@@ -1,0 +1,21 @@
+Payment Reminder
+
+Hi {{ customer_name }},
+
+This is a friendly reminder that the following invoice is past due. We'd appreciate your prompt attention to this matter.
+
+Invoice:    {{ number }}
+Amount Due: ${{ "%.2f"|format(amount_due) }} {{ (currency or "usd")|upper }}
+Due Date:   {{ due_date }}
+
+{% if hosted_invoice_url %}
+View & Pay Invoice: {{ hosted_invoice_url }}
+{% endif %}
+
+If you've already sent payment, please disregard this message. Otherwise, please let us know if you have any questions.
+
+Thank you,
+Understory Agency
+
+---
+This is an automated reminder from Understory Agency.

@@ -1,0 +1,11 @@
+flask>=3.0
+stripe>=8.0
+requests>=2.31
+slack-bolt>=1.18
+slack-sdk>=3.27
+apscheduler>=3.10
+plotly>=5.22
+python-dotenv>=1.0
+python-dateutil>=2.9
+jinja2>=3.1
+gunicorn>=22.0

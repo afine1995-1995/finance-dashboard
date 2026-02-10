@@ -1,0 +1,243 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0f0f23;
+    color: #ffffff;
+}
+
+nav {
+    background: #1a1a2e;
+    color: #fff;
+    padding: 16px 32px;
+    border-bottom: 1px solid #2a2a4a;
+}
+
+.nav-brand {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+main {
+    max-width: 1400px;
+    margin: 32px auto;
+    padding: 0 24px;
+}
+
+.chart-container {
+    background: #1a1a2e;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.chart {
+    width: 100%;
+    height: 700px;
+}
+
+.chart-medium {
+    width: 100%;
+    height: 600px;
+}
+
+.chart-auto {
+    width: 100%;
+    min-height: 500px;
+}
+
+.chart-fixed {
+    width: 100%;
+    height: 500px;
+}
+
+.chart-fixed-tall {
+    width: 100%;
+    height: 550px;
+}
+
+.chart-row {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.chart-half {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+/* Spend detail drill-down modal */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    position: relative;
+    background: #1a1a2e;
+    border-radius: 12px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+    width: 900px;
+    height: 600px;
+    max-width: 95vw;
+    max-height: 90vh;
+    padding: 24px;
+}
+
+.modal-close {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    background: none;
+    border: none;
+    color: #ffffff;
+    font-size: 28px;
+    cursor: pointer;
+    z-index: 1001;
+    line-height: 1;
+    padding: 4px 8px;
+}
+
+.modal-close:hover {
+    color: #e74c3c;
+}
+
+/* Wide variant for invoice detail modal */
+.modal-content-wide {
+    width: 1000px;
+    height: auto;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-title {
+    color: #ffffff;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    padding-right: 40px;
+}
+
+/* Invoice table */
+.invoice-table-container {
+    overflow-y: auto;
+    flex: 1;
+}
+
+.invoice-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.invoice-table thead th {
+    text-align: left;
+    padding: 10px 12px;
+    color: #a0a0b8;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #2a2a4a;
+    position: sticky;
+    top: 0;
+    background: #1a1a2e;
+}
+
+.invoice-table tbody tr {
+    border-bottom: 1px solid #1f1f3a;
+}
+
+.invoice-table tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.invoice-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.invoice-table td {
+    padding: 10px 12px;
+    color: #ddd;
+}
+
+.invoice-table .text-right {
+    text-align: right;
+}
+
+.invoice-link {
+    color: #5dade2;
+    text-decoration: none;
+}
+
+.invoice-link:hover {
+    text-decoration: underline;
+}
+
+/* Status badges */
+.badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.badge-outstanding {
+    background: rgba(46, 204, 113, 0.15);
+    color: #2ecc71;
+}
+
+.badge-overdue {
+    background: rgba(231, 76, 60, 0.15);
+    color: #e74c3c;
+}
+
+/* Send reminder button */
+.btn-reminder {
+    padding: 5px 14px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: #3498db;
+    color: #fff;
+    transition: background 0.2s;
+}
+
+.btn-reminder:hover:not(:disabled) {
+    background: #2980b9;
+}
+
+.btn-reminder:disabled {
+    cursor: default;
+    opacity: 0.8;
+}
+
+.btn-reminder-sent {
+    background: #27ae60;
+}
+
+.btn-reminder-sending {
+    background: #7f8c8d;
+}
+
+.btn-reminder-error {
+    background: #e74c3c;
+}
