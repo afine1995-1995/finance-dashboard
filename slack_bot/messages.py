@@ -49,6 +49,70 @@ def late_payment_alert(invoice: dict) -> list:
     return blocks
 
 
+def overdue_invoice_report(invoices: list) -> list:
+    """Build Block Kit blocks for an overdue invoice report with a Send All button."""
+    total_overdue = sum(inv.get("amount_due", 0) for inv in invoices)
+
+    # Group by customer
+    by_customer = {}
+    for inv in invoices:
+        name = inv.get("customer_name", "Unknown")
+        if name not in by_customer:
+            by_customer[name] = {"amount": 0, "count": 0}
+        by_customer[name]["amount"] += inv.get("amount_due", 0)
+        by_customer[name]["count"] += 1
+
+    client_lines = ""
+    for name, info in sorted(by_customer.items(), key=lambda x: -x[1]["amount"]):
+        inv_label = "invoice" if info["count"] == 1 else "invoices"
+        client_lines += f"• *{name}*: ${info['amount']:,.2f} ({info['count']} {inv_label})\n"
+
+    blocks = [
+        {
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": ":rotating_light: Overdue Invoice Report",
+            },
+        },
+        {
+            "type": "section",
+            "fields": [
+                {"type": "mrkdwn", "text": f"*Total Overdue:*\n${total_overdue:,.2f}"},
+                {"type": "mrkdwn", "text": f"*Clients:*\n{len(by_customer)}"},
+            ],
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"*Breakdown by Client:*\n{client_lines}",
+            },
+        },
+        {
+            "type": "actions",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "Send reminder to all overdue"},
+                    "style": "danger",
+                    "action_id": "send_all_overdue_reminders",
+                    "confirm": {
+                        "title": {"type": "plain_text", "text": "Send reminders?"},
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f"This will send individual reminder emails to all {len(by_customer)} overdue clients.",
+                        },
+                        "confirm": {"type": "plain_text", "text": "Send All"},
+                        "deny": {"type": "plain_text", "text": "Cancel"},
+                    },
+                },
+            ],
+        },
+    ]
+    return blocks
+
+
 def weekly_summary(summary: dict, start_date: str, end_date: str) -> list:
     """Build Block Kit blocks for a weekly financial summary."""
     inflows = summary.get("inflows", 0)

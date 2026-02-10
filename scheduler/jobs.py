@@ -4,8 +4,8 @@ from datetime import datetime, timedelta, timezone
 from services.stripe_service import sync_invoices, sync_subscriptions
 from services.mercury_service import sync_transactions
 from services.slack_service import post_message
-from models.queries import get_late_invoices, mark_notified, get_period_summary
-from slack_bot.messages import late_payment_alert, weekly_summary
+from models.queries import get_late_invoices, get_all_late_invoices, mark_notified, get_period_summary
+from slack_bot.messages import late_payment_alert, overdue_invoice_report, weekly_summary
 
 logger = logging.getLogger(__name__)
 
@@ -67,3 +67,22 @@ def post_weekly_summary():
         post_message(blocks=blocks, text=text)
     except Exception as e:
         logger.error(f"Failed to post weekly summary: {e}")
+
+
+def post_overdue_report():
+    """Post a report of all overdue invoices to Slack with a Send All button."""
+    logger.info("Posting overdue invoice report...")
+    invoices = get_all_late_invoices()
+
+    if not invoices:
+        logger.info("No overdue invoices — skipping report")
+        return
+
+    blocks = overdue_invoice_report(invoices)
+    total = sum(inv.get("amount_due", 0) for inv in invoices)
+    text = f"Overdue report: {len(invoices)} invoices totaling ${total:,.2f}"
+
+    try:
+        post_message(blocks=blocks, text=text)
+    except Exception as e:
+        logger.error(f"Failed to post overdue report: {e}")

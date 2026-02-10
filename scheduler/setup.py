@@ -5,7 +5,7 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from config import Config
-from scheduler.jobs import sync_all_data, check_late_payments, post_weekly_summary
+from scheduler.jobs import sync_all_data, check_late_payments, post_weekly_summary, post_overdue_report
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +41,20 @@ def create_scheduler() -> BackgroundScheduler:
         ),
         id="post_weekly_summary",
         name="Post weekly Slack summary",
+        replace_existing=True,
+    )
+
+    # Overdue invoice report — Monday and Thursday at 9 AM Eastern
+    scheduler.add_job(
+        post_overdue_report,
+        trigger=CronTrigger(
+            day_of_week="mon,thu",
+            hour=9,
+            minute=0,
+            timezone="US/Eastern",
+        ),
+        id="post_overdue_report",
+        name="Post overdue invoice report to Slack",
         replace_existing=True,
     )
 
