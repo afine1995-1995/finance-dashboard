@@ -49,11 +49,14 @@ scheduler = create_scheduler()
 scheduler.start()
 
 # 4. Start Slack Socket Mode in a background thread
-logger.info("Starting Slack Socket Mode...")
-slack_app = create_slack_app()
-socket_handler = SocketModeHandler(slack_app, Config.SLACK_APP_TOKEN)
-socket_handler.connect()
-logger.info("Slack Socket Mode connected")
+if Config.SLACK_BOT_TOKEN and Config.SLACK_APP_TOKEN:
+    logger.info("Starting Slack Socket Mode...")
+    slack_app = create_slack_app()
+    socket_handler = SocketModeHandler(slack_app, Config.SLACK_APP_TOKEN)
+    socket_handler.connect()
+    logger.info("Slack Socket Mode connected")
+else:
+    logger.warning("Slack tokens not configured — skipping Slack bot")
 
 # 5. Create Flask app
 flask_app = create_flask_app()
