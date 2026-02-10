@@ -70,7 +70,7 @@ def chart_spend_detail():
     return Response(build_spend_detail_chart(month, category), mimetype="application/json")
 
 
-@bp.route("/api/slack/weekly-summary", methods=["POST"])
+@bp.route("/api/slack/weekly-summary", methods=["GET", "POST"])
 def api_trigger_weekly_summary():
     try:
         post_weekly_summary()
