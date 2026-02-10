@@ -6,6 +6,7 @@ from flask import Blueprint, Response, jsonify, render_template, request
 from models.queries import get_open_invoices_for_client, mark_email_sent
 from services.email_service import send_reminder_email
 from services.stripe_service import get_fresh_invoice
+from scheduler.jobs import post_weekly_summary
 from web.charts import (
     build_in_vs_out_chart,
     build_profit_margin_chart,
@@ -67,6 +68,16 @@ def chart_spend_detail():
     month = request.args.get("month", "")
     category = request.args.get("category", "")
     return Response(build_spend_detail_chart(month, category), mimetype="application/json")
+
+
+@bp.route("/api/slack/weekly-summary", methods=["POST"])
+def api_trigger_weekly_summary():
+    try:
+        post_weekly_summary()
+        return jsonify({"success": True, "message": "Weekly summary posted to Slack"})
+    except Exception as e:
+        logger.error(f"Failed to trigger weekly summary: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 @bp.route("/api/invoices/open")
