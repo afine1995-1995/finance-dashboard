@@ -170,6 +170,16 @@ main {
     color: #ffffff;
 }
 
+.kpi-card-clickable {
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.kpi-card-clickable:hover {
+    background: #22223a;
+    transform: translateY(-2px);
+}
+
 .chart-container {
     background: #1a1a2e;
     border-radius: 12px;

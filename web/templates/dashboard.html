@@ -22,7 +22,7 @@
     </div>
 </div>
 <div class="kpi-row kpi-row-3">
-    <div class="kpi-card">
+    <div class="kpi-card kpi-card-clickable" id="kpi-arr-card" onclick="loadArrHistory()">
         <div class="kpi-icon">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2ecc71" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
@@ -116,6 +116,28 @@
     </div>
 </div>
 
+<!-- ARR history modal -->
+<div id="arr-history-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content modal-content-wide">
+        <button class="modal-close" id="arr-modal-close-btn">&times;</button>
+        <h2 class="modal-title">Run Rate ARR History</h2>
+        <div class="invoice-table-container">
+            <table class="invoice-table">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th class="text-right">Monthly Collected</th>
+                        <th class="text-right">Run Rate ARR</th>
+                        <th class="text-right">MoM Change</th>
+                    </tr>
+                </thead>
+                <tbody id="arr-history-body"></tbody>
+                <tfoot id="arr-history-foot"></tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
 <!-- Invoice detail drill-down modal -->
 <div id="invoice-detail-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content modal-content-wide">
@@ -141,5 +163,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('web.static', filename='js/dashboard.js') }}?v=4"></script>
+<script src="{{ url_for('web.static', filename='js/dashboard.js') }}?v=5"></script>
 {% endblock %}

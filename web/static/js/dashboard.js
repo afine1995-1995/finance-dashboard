@@ -357,6 +357,100 @@ function attachExpectedRevenueClickHandler() {
     });
 }
 
+// --- ARR history modal ---
+
+function showArrModal() {
+    document.getElementById("arr-history-modal").style.display = "flex";
+}
+
+function hideArrModal() {
+    document.getElementById("arr-history-modal").style.display = "none";
+}
+
+async function loadArrHistory() {
+    const tbody = document.getElementById("arr-history-body");
+    const tfoot = document.getElementById("arr-history-foot");
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:#888;">Loading...</td></tr>';
+    tfoot.innerHTML = "";
+    showArrModal();
+
+    try {
+        const resp = await fetch("/api/arr-history");
+        const data = await resp.json();
+        const months = data.months;
+
+        const fmtWhole = (n) => "$" + Math.round(Number(n)).toLocaleString("en-US");
+        const fmtChange = (n) => {
+            const sign = n >= 0 ? "+" : "";
+            return sign + "$" + Math.round(Math.abs(n)).toLocaleString("en-US");
+        };
+        const monthName = (m) => {
+            const [y, mo] = m.split("-");
+            const d = new Date(Number(y), Number(mo) - 1);
+            return d.toLocaleString("default", { month: "short", year: "numeric" });
+        };
+
+        tbody.innerHTML = "";
+        months.forEach(function (row, i) {
+            const tr = document.createElement("tr");
+
+            const tdMonth = document.createElement("td");
+            tdMonth.textContent = monthName(row.month);
+            tr.appendChild(tdMonth);
+
+            const tdCollected = document.createElement("td");
+            tdCollected.className = "text-right";
+            tdCollected.textContent = fmtWhole(row.collected);
+            tr.appendChild(tdCollected);
+
+            const tdArr = document.createElement("td");
+            tdArr.className = "text-right";
+            tdArr.textContent = fmtWhole(row.arr);
+            tr.appendChild(tdArr);
+
+            const tdChange = document.createElement("td");
+            tdChange.className = "text-right";
+            if (i === 0) {
+                tdChange.textContent = "—";
+                tdChange.style.color = "#888";
+            } else {
+                const change = row.arr - months[i - 1].arr;
+                tdChange.textContent = fmtChange(change);
+                tdChange.style.color = change >= 0 ? "#2ecc71" : "#e74c3c";
+            }
+            tr.appendChild(tdChange);
+
+            tbody.appendChild(tr);
+        });
+
+        // Average MoM change footer
+        tfoot.innerHTML = "";
+        const footTr = document.createElement("tr");
+        footTr.style.borderTop = "2px solid #2a2a4a";
+
+        const tdLabel = document.createElement("td");
+        tdLabel.colSpan = 3;
+        tdLabel.style.fontWeight = "600";
+        tdLabel.style.color = "#a0a0b8";
+        tdLabel.style.padding = "12px 12px";
+        tdLabel.textContent = "Avg Month-over-Month Change";
+        footTr.appendChild(tdLabel);
+
+        const tdAvg = document.createElement("td");
+        tdAvg.className = "text-right";
+        tdAvg.style.fontWeight = "600";
+        tdAvg.style.padding = "12px 12px";
+        tdAvg.textContent = fmtChange(data.avg_mom_change);
+        tdAvg.style.color = data.avg_mom_change >= 0 ? "#2ecc71" : "#e74c3c";
+        footTr.appendChild(tdAvg);
+
+        tfoot.appendChild(footTr);
+    } catch (err) {
+        console.error("Failed to load ARR history:", err);
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:#e74c3c;">Failed to load ARR history.</td></tr>';
+    }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     loadAll();
 
@@ -370,6 +464,12 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("invoice-modal-close-btn").addEventListener("click", hideInvoiceModal);
     document.getElementById("invoice-detail-modal").addEventListener("click", function (e) {
         if (e.target === this) hideInvoiceModal();
+    });
+
+    // Close ARR history modal on X button or backdrop click
+    document.getElementById("arr-modal-close-btn").addEventListener("click", hideArrModal);
+    document.getElementById("arr-history-modal").addEventListener("click", function (e) {
+        if (e.target === this) hideArrModal();
     });
 
     // Refresh chart data every hour

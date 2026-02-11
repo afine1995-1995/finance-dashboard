@@ -825,6 +825,47 @@ def get_ytd_collected():
     return row["total"] or 0
 
 
+def get_monthly_collected_history(months=6):
+    """Return collected totals for each of the last N complete months via Mercury inflows."""
+    now = datetime.now(timezone.utc)
+    results = []
+    for i in range(1, months + 1):
+        # First day of the month (i months ago)
+        m = now.month - i
+        y = now.year
+        while m <= 0:
+            m += 12
+            y -= 1
+        start = datetime(y, m, 1).strftime("%Y-%m-%d")
+        month_label = datetime(y, m, 1).strftime("%Y-%m")
+
+        # First day of the next month (end boundary)
+        nm = m + 1
+        ny = y
+        if nm > 12:
+            nm = 1
+            ny += 1
+        end = datetime(ny, nm, 1).strftime("%Y-%m-%d")
+
+        conn = get_connection()
+        row = conn.execute(
+            f"""SELECT COALESCE(SUM(amount), 0) AS total
+               FROM mercury_transactions
+               WHERE amount > 0
+                 AND COALESCE(posted_date, created_at) >= ?
+                 AND COALESCE(posted_date, created_at) < ?
+                 AND status NOT IN ('cancelled', 'failed')
+                 AND kind NOT IN ('creditCardTransaction', 'cardInternationalTransactionFee')
+                 {EXCLUDE_INTERNAL}""",
+            (start, end),
+        ).fetchone()
+        conn.close()
+        results.append({"month": month_label, "collected": row["total"] or 0})
+
+    results.reverse()  # oldest first
+    return results
+
+
 def get_last_month_collected():
     """Return total collected last month across Mercury inflows and Stripe payments."""
     now = datetime.now(timezone.utc)

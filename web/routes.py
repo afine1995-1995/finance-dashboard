@@ -89,6 +89,24 @@ def chart_spend_detail():
     return Response(build_spend_detail_chart(month, category), mimetype="application/json")
 
 
+@bp.route("/api/arr-history")
+def api_arr_history():
+    from models.queries import get_monthly_collected_history
+    rows = get_monthly_collected_history(months=6)
+    months = []
+    for r in rows:
+        arr = r["collected"] * 12
+        months.append({"month": r["month"], "collected": r["collected"], "arr": arr})
+
+    # Calculate month-on-month changes and average
+    changes = []
+    for i in range(1, len(months)):
+        changes.append(months[i]["arr"] - months[i - 1]["arr"])
+    avg_mom_change = round(sum(changes) / len(changes), 2) if changes else 0
+
+    return jsonify({"months": months, "avg_mom_change": avg_mom_change})
+
+
 @bp.route("/api/slack/weekly-summary", methods=["GET", "POST"])
 def api_trigger_weekly_summary():
     try:
