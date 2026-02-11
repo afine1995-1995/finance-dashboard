@@ -7,7 +7,7 @@ from models.queries import get_open_invoices_for_client, get_all_late_invoices, 
 from services.email_service import send_reminder_email
 from services.stripe_service import get_fresh_invoice, get_balance as get_stripe_balance
 from services.mercury_service import get_total_balance as get_mercury_balance
-from scheduler.jobs import post_weekly_summary, post_mtd_report, post_overdue_report
+from scheduler.jobs import post_weekly_summary, post_mtd_report, post_overdue_report, sync_all_data
 from web.charts import (
     build_in_vs_out_chart,
     build_profit_margin_chart,
@@ -144,6 +144,16 @@ def api_open_invoices():
         })
 
     return jsonify(invoices)
+
+
+@bp.route("/api/sync", methods=["POST"])
+def api_sync():
+    try:
+        sync_all_data()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error(f"Manual sync failed: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 @bp.route("/api/invoices/send-reminder", methods=["POST"])

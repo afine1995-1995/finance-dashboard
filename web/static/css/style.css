@@ -72,6 +72,35 @@ nav {
     flex-shrink: 0;
 }
 
+.btn-refresh {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    border: none;
+    border-radius: 8px;
+    background: #2c3e50;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.btn-refresh:hover:not(:disabled) {
+    background: #34495e;
+    transform: translateY(-1px);
+}
+
+.btn-refresh:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.btn-refresh:disabled {
+    opacity: 0.7;
+    cursor: default;
+}
+
 main {
     max-width: 1400px;
     margin: 32px auto;

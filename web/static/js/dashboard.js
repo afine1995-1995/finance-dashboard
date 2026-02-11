@@ -31,6 +31,40 @@ async function pushSlackReport() {
     }
 }
 
+async function refreshData() {
+    const btn = document.getElementById("refresh-data-btn");
+    const label = btn.querySelector("span");
+    const original = label.textContent;
+
+    btn.disabled = true;
+    label.textContent = "Syncing...";
+
+    try {
+        const resp = await fetch("/api/sync", { method: "POST" });
+        const data = await resp.json();
+        if (data.success) {
+            label.textContent = "Done!";
+            btn.style.background = "#27ae60";
+            loadAll();
+            setTimeout(() => {
+                label.textContent = original;
+                btn.style.background = "";
+                btn.disabled = false;
+            }, 3000);
+        } else {
+            throw new Error(data.error || "Unknown error");
+        }
+    } catch (err) {
+        label.textContent = "Failed";
+        btn.style.background = "#e74c3c";
+        setTimeout(() => {
+            label.textContent = original;
+            btn.style.background = "";
+            btn.disabled = false;
+        }, 3000);
+    }
+}
+
 async function remindAllOverdue() {
     if (!confirm("This will send reminder emails to all overdue clients. Continue?")) return;
 
