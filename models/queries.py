@@ -74,7 +74,7 @@ def categorize_vendor(name, kind=None):
 
     # Tech Vendors — software, SaaS, AI, sales tools, lead gen, ads
     if any(kw in upper for kw in [
-        "GROWTHX", "STRIPE", "OPENAI", "OPEN AI", "CHATGPT", "ANTHROPIC",
+        "STRIPE", "OPENAI", "OPEN AI", "CHATGPT", "ANTHROPIC",
         "CLAUDE", "LOVABLE", "MANUS", "GITHUB", "GOOGLE", "MICROSOFT",
         "AMAZON WEB", "AWS", "HEROKU", "VERCEL", "NETLIFY", "DIGITAL OCEAN",
         "CLOUDFLARE", "SLACK", "NOTION", "FIGMA", "CANVA", "HUBSPOT",
@@ -100,7 +100,7 @@ def categorize_vendor(name, kind=None):
     if any(kw in upper for kw in [
         "FUELFINANCE", "AUTOMATEDEMAND", "FANBASIS", "PAYONEER",
         "REVPARTNERS", "VIVA GROWTH", "CHITLANGIA", "NOAH GREEN",
-        "COASTAL-COLLECTIVE", "LA WHENCE", "TRADEMIMIC", "KS-MEDIA",
+        "COASTAL-COLLECTIVE", "LA WHENCE", "TRADEMIMIC", "KS-MEDIA", "GROWTHX",
     ]):
         return "Labor"
 
@@ -598,7 +598,8 @@ CHECKING_OPS_FILTER = f"""
          OR counterparty_name LIKE '%SAVERITE TAX%'
          OR counterparty_name LIKE '%STATE OF TN%'
          OR counterparty_name LIKE '%DELAWARE CORP%'
-         OR counterparty_name LIKE '%Payoneer%')
+         OR counterparty_name LIKE '%Payoneer%'
+         OR counterparty_name LIKE '%GROWTHX%')
     {EXCLUDE_INTERNAL}
 """
 
