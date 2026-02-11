@@ -1,4 +1,5 @@
 import logging
+import threading
 
 from flask import Flask, Response, request
 from slack_bolt import App as SlackApp
@@ -36,12 +37,15 @@ def create_slack_app() -> SlackApp:
 logger.info("Initializing database...")
 init_db()
 
-# 2. Run initial data sync
-logger.info("Running initial data sync...")
-try:
-    sync_all_data()
-except Exception as e:
-    logger.warning(f"Initial sync failed (will retry on schedule): {e}")
+# 2. Run initial data sync in background (so gunicorn can start serving immediately)
+def _initial_sync():
+    try:
+        sync_all_data()
+    except Exception as e:
+        logger.warning(f"Initial sync failed (will retry on schedule): {e}")
+
+logger.info("Running initial data sync in background...")
+threading.Thread(target=_initial_sync, daemon=True).start()
 
 # 3. Start scheduler
 logger.info("Starting scheduler...")
