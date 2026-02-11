@@ -282,3 +282,37 @@ main {
 .btn-reminder-error {
     background: #e74c3c;
 }
+
+/* Remind All Overdue button */
+.btn-remind-all {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 10;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    background: #e74c3c;
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.btn-remind-all:hover:not(:disabled) {
+    background: #c0392b;
+    transform: translateY(-1px);
+}
+
+.btn-remind-all:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.btn-remind-all:disabled {
+    opacity: 0.7;
+    cursor: default;
+}

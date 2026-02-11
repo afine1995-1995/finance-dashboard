@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, Response, jsonify, render_template, request
 
-from models.queries import get_open_invoices_for_client, mark_email_sent
+from models.queries import get_open_invoices_for_client, get_all_late_invoices, mark_email_sent
 from services.email_service import send_reminder_email
 from services.stripe_service import get_fresh_invoice
 from scheduler.jobs import post_weekly_summary, post_mtd_report, post_overdue_report
@@ -148,3 +148,41 @@ def api_send_reminder():
     except Exception as e:
         logger.error(f"Email send failed for {invoice_id}: {e}")
         return jsonify({"error": f"Failed to send email: {e}"}), 500
+
+
+@bp.route("/api/invoices/remind-all-overdue", methods=["POST"])
+def api_remind_all_overdue():
+    invoices = get_all_late_invoices()
+    if not invoices:
+        return jsonify({"success": True, "sent": 0, "failed": 0, "skipped": 0, "results": []})
+
+    sent = 0
+    failed = 0
+    skipped = 0
+    results = []
+
+    for inv in invoices:
+        invoice_id = inv["id"]
+        invoice = get_fresh_invoice(invoice_id)
+        if not invoice:
+            skipped += 1
+            results.append({"id": invoice_id, "status": "skipped", "reason": "Could not fetch from Stripe"})
+            continue
+
+        customer_email = invoice.get("customer_email")
+        if not customer_email:
+            skipped += 1
+            results.append({"id": invoice_id, "status": "skipped", "reason": "No email on file", "customer": invoice.get("customer_name", "Unknown")})
+            continue
+
+        try:
+            send_reminder_email(customer_email, invoice)
+            mark_email_sent(invoice_id)
+            sent += 1
+            results.append({"id": invoice_id, "status": "sent", "email": customer_email, "customer": invoice.get("customer_name", "Unknown")})
+        except Exception as e:
+            failed += 1
+            results.append({"id": invoice_id, "status": "failed", "reason": str(e), "customer": invoice.get("customer_name", "Unknown")})
+            logger.error(f"Bulk remind failed for {invoice_id}: {e}")
+
+    return jsonify({"success": True, "sent": sent, "failed": failed, "skipped": skipped, "results": results})
