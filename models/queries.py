@@ -716,6 +716,22 @@ def get_ytd_owner_distributions():
     return row["total"] or 0
 
 
+def get_ytd_outflows():
+    """Return total money out in 2026 via Mercury outflows."""
+    conn = get_connection()
+    row = conn.execute(
+        f"""SELECT COALESCE(SUM(ABS(amount)), 0) AS total
+           FROM mercury_transactions
+           WHERE amount < 0
+             AND COALESCE(posted_date, created_at) >= '2026-01-01'
+             AND status NOT IN ('cancelled', 'failed')
+             AND kind NOT IN ('creditCardTransaction', 'cardInternationalTransactionFee')
+             {EXCLUDE_INTERNAL}""",
+    ).fetchone()
+    conn.close()
+    return row["total"] or 0
+
+
 def get_ytd_collected():
     """Return total collected in 2026 via Mercury inflows (includes Stripe payouts)."""
     conn = get_connection()

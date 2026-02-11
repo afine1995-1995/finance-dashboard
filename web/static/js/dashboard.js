@@ -96,6 +96,7 @@ async function loadBalances() {
         document.getElementById("kpi-arr").textContent = fmtWhole(data.run_rate_arr);
         document.getElementById("kpi-ytd").textContent = fmtWhole(data.ytd_collected);
         document.getElementById("kpi-distributions").textContent = fmtWhole(data.ytd_distributions);
+        document.getElementById("kpi-outflows").textContent = fmtWhole(data.ytd_outflows);
     } catch (err) {
         console.error("Failed to load balances:", err);
     }
