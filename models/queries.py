@@ -385,18 +385,17 @@ def get_active_subscriptions_by_client():
     """Return current active clients with monthly revenue.
 
     Combines two sources:
-    1. Stripe active subscriptions (monthly_amount from subscription items)
-    2. Mercury direct payers (clients who pay via wire/ACH, not through Stripe)
+    1. Stripe — active subscriptions if synced, otherwise recent paid invoices
+    2. Mercury — direct payers (wire/ACH, not through Stripe)
 
-    Mercury direct payers are identified from inflows in the last 90 days,
-    excluding Stripe payouts, internal transfers, and non-client amounts.
-    Their monthly revenue is calculated as total / number of months active.
+    Mercury direct payers are matched against Stripe client names to avoid
+    double-counting clients who pay through both channels.
     """
     conn = get_connection()
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     clients = {}  # {name: monthly_revenue}
 
-    # 1. Stripe active subscriptions
+    # 1. Stripe clients
     if _has_subscriptions():
         rows = conn.execute(
             """SELECT customer_name,
@@ -409,8 +408,34 @@ def get_active_subscriptions_by_client():
         for r in rows:
             if r["monthly_revenue"] and r["monthly_revenue"] > 0:
                 clients[r["customer_name"]] = r["monthly_revenue"]
+    else:
+        # Fallback: derive from invoices created in last 90 days
+        # Group by client + creation month, then average across months
+        rows = conn.execute(
+            """SELECT customer_name, ROUND(AVG(monthly_total), 2) AS monthly_revenue
+               FROM (
+                   SELECT customer_name,
+                          strftime('%Y-%m', created_at) AS month,
+                          SUM(amount_due) AS monthly_total
+                   FROM stripe_invoices
+                   WHERE status IN ('paid', 'open')
+                     AND created_at >= date(?, '-90 days')
+                     AND amount_due > 0
+                     AND customer_name IS NOT NULL
+                   GROUP BY customer_name, strftime('%Y-%m', created_at)
+               )
+               GROUP BY customer_name
+               ORDER BY monthly_revenue DESC""",
+            (now,),
+        ).fetchall()
+        for r in rows:
+            if r["monthly_revenue"] and r["monthly_revenue"] > 0:
+                clients[r["customer_name"]] = r["monthly_revenue"]
 
-    # 2. Mercury direct payers (last 90 days, excluding Stripe payouts and internal)
+    # 2. Mercury direct payers (last 90 days)
+    # Build a lowercase set of Stripe client names for dedup matching
+    stripe_names_lower = {name.lower() for name in clients}
+
     rows = conn.execute(
         f"""SELECT counterparty_name,
                SUM(amount) AS total,
@@ -434,10 +459,28 @@ def get_active_subscriptions_by_client():
 
     for r in rows:
         name = r["counterparty_name"]
+        # Skip if this client is already in Stripe (fuzzy match)
+        name_lower = name.lower().strip()
+        for suffix in [", inc.", ", inc", " inc.", " inc", " llc", " ltd"]:
+            if name_lower.endswith(suffix):
+                name_lower = name_lower[:-len(suffix)].strip()
+                break
+        already_in_stripe = False
+        for sn in stripe_names_lower:
+            sn_clean = sn
+            for suffix in [", inc.", ", inc", " inc.", " inc", " llc", " ltd"]:
+                if sn_clean.endswith(suffix):
+                    sn_clean = sn_clean[:-len(suffix)].strip()
+                    break
+            if name_lower == sn_clean or name_lower in sn_clean or sn_clean in name_lower:
+                already_in_stripe = True
+                break
+        if already_in_stripe:
+            continue
+
         months = max(r["months_active"], 1)
         monthly = round(r["total"] / months, 2)
-        # Add to existing (unlikely overlap) or set
-        clients[name] = clients.get(name, 0) + monthly
+        clients[name] = monthly
 
     conn.close()
 
