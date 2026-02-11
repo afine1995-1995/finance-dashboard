@@ -120,20 +120,76 @@ function applyMobileLayout(fig) {
         });
     }
 
+    // --- Merge paired top annotations into compact single-line labels ---
+    // Fixes profit-margin averages and expected-revenue totals overlapping titles
     var hasTopAnnotations = false;
     if (fig.layout.annotations) {
+        var topAnns = [];
+        var otherAnns = [];
         fig.layout.annotations.forEach(function (a) {
-            if (a.yref === "paper" && a.y > 1.05) hasTopAnnotations = true;
+            // Remove right-side panel annotations (in-vs-out summary)
+            if (a.xref === "paper" && a.x > 1.0) return;
+            if (a.yref === "paper" && a.y > 1.05) {
+                topAnns.push(a);
+            } else {
+                // Shrink regular annotations (bar totals etc.)
+                if (a.font && a.font.size) a.font.size = Math.min(a.font.size, 9);
+                otherAnns.push(a);
+            }
         });
+
+        if (topAnns.length > 0) {
+            hasTopAnnotations = true;
+            // Group top annotations by x position (label + number at same x)
+            var groups = {};
+            topAnns.forEach(function (a) {
+                var key = Math.round(a.x * 100);
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(a);
+            });
+
+            var merged = [];
+            Object.keys(groups).forEach(function (key) {
+                var group = groups[key];
+                var labelAnn = null;
+                var numberAnn = null;
+                group.forEach(function (a) {
+                    if (a.font && a.font.size >= 20) numberAnn = a;
+                    else labelAnn = a;
+                });
+
+                if (labelAnn && numberAnn) {
+                    // Combine into one compact annotation: "Label\nValue"
+                    var labelText = labelAnn.text.replace(/<\/?b>/g, "");
+                    merged.push({
+                        text: labelText + "<br>" + numberAnn.text,
+                        xref: "paper", yref: "paper",
+                        x: numberAnn.x, y: 1.18,
+                        showarrow: false,
+                        font: { color: numberAnn.font.color, size: 10 },
+                        align: "center",
+                    });
+                } else {
+                    // Unpaired — just shrink
+                    group.forEach(function (a) {
+                        if (a.font) a.font.size = Math.min(a.font.size, 9);
+                        merged.push(a);
+                    });
+                }
+            });
+            fig.layout.annotations = otherAnns.concat(merged);
+        } else {
+            fig.layout.annotations = otherAnns;
+        }
     }
 
     // --- Margins per chart type ---
     if (hasPie) {
         fig.layout.margin = { l: 10, r: 10, t: 50, b: 10 };
     } else if (hasHorizontalBars) {
-        fig.layout.margin = { l: 110, r: 50, t: hasTopAnnotations ? 100 : 50, b: 40 };
+        fig.layout.margin = { l: 110, r: 50, t: hasTopAnnotations ? 80 : 50, b: 40 };
     } else {
-        fig.layout.margin = { l: 45, r: 10, t: hasTopAnnotations ? 90 : 40, b: 60 };
+        fig.layout.margin = { l: 35, r: 8, t: hasTopAnnotations ? 70 : 30, b: 55 };
     }
 
     // Cap explicit height for horizontal bar charts
@@ -143,17 +199,17 @@ function applyMobileLayout(fig) {
 
     // --- Title ---
     if (fig.layout.title && fig.layout.title.font) {
-        fig.layout.title.font.size = 14;
+        fig.layout.title.font.size = 13;
     }
 
-    // --- Axes ---
+    // --- Axes: shrink ticks, remove titles, angle x-axis ---
     ["xaxis", "yaxis"].forEach(function (axis) {
         var ax = fig.layout[axis];
         if (!ax) return;
         if (ax.tickfont) ax.tickfont.size = 9;
-        if (ax.title && ax.title.font) ax.title.font.size = 10;
+        // Remove axis title text on mobile to save space
+        if (ax.title) ax.title.text = "";
     });
-    // Rotate x-axis month labels so they don't overlap
     if (!hasHorizontalBars && !hasPie && fig.layout.xaxis) {
         fig.layout.xaxis.tickangle = -45;
     }
@@ -163,35 +219,6 @@ function applyMobileLayout(fig) {
         fig.layout.legend.font = fig.layout.legend.font || {};
         fig.layout.legend.font.size = 9;
         fig.layout.legend.y = Math.min(fig.layout.legend.y != null ? fig.layout.legend.y : 0, -0.3);
-    }
-
-    // --- Annotations ---
-    if (fig.layout.annotations) {
-        var kept = [];
-        fig.layout.annotations.forEach(function (a) {
-            // Remove right-side panel annotations (in-vs-out summary)
-            if (a.xref === "paper" && a.x > 1.0) return;
-
-            // Shrink + compact top-area annotations (margin averages, totals)
-            if (a.yref === "paper" && a.y > 1.05) {
-                if (a.font && a.font.size >= 20) {
-                    a.font.size = 14;
-                    if (a.y > 1.1 && a.y < 1.2) a.y -= 0.02;
-                } else if (a.font) {
-                    a.font.size = Math.min(a.font.size, 9);
-                    if (a.y > 1.2) a.y -= 0.04;
-                }
-                kept.push(a);
-                return;
-            }
-
-            // Regular annotations (bar totals, reference labels)
-            if (a.font && a.font.size) {
-                a.font.size = Math.min(a.font.size, 9);
-            }
-            kept.push(a);
-        });
-        fig.layout.annotations = kept;
     }
 
     // --- Traces ---

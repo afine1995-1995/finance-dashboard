@@ -532,11 +532,12 @@ main {
         font-size: 1.1rem;
     }
 
-    /* Charts */
+    /* Charts — edge-to-edge inside card */
     .chart-container {
-        padding: 4px;
+        padding: 0;
         margin-bottom: 10px;
         border-radius: 10px;
+        overflow: hidden;
     }
 
     .chart {
