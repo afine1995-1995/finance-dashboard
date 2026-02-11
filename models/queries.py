@@ -381,6 +381,15 @@ def _get_active_client_ids():
     return {r["customer_id"] for r in rows}
 
 
+# Clients confirmed as churned — excluded from active revenue share.
+# Remove from this list if a client re-activates.
+CHURNED_CLIENTS = {
+    "Sonrai Security", "Finout", "Lindus Health", "Pelion",
+    "Rivial Security", "Tabs", "Journey Clinical", "Atto",
+    "Hudson Joyner", "World 50, Inc", "vsimple", "Reveal Security",
+}
+
+
 def get_active_subscriptions_by_client():
     """Return current active clients with monthly revenue.
 
@@ -410,24 +419,26 @@ def get_active_subscriptions_by_client():
                 clients[r["customer_name"]] = r["monthly_revenue"]
     else:
         # Fallback: use each client's most recent invoice amount.
-        # For recurring billing, the latest invoice = current monthly rate.
+        # Only include clients with an invoice created in the last 35 days
+        # (one billing cycle) to exclude recently churned clients.
         rows = conn.execute(
             """SELECT customer_name, amount_due AS monthly_revenue
                FROM stripe_invoices
                WHERE status IN ('paid', 'open')
                  AND amount_due > 0
                  AND customer_name IS NOT NULL
+                 AND created_at >= date(?, '-35 days')
                  AND id IN (
                      SELECT id FROM stripe_invoices si2
                      WHERE si2.customer_name = stripe_invoices.customer_name
                        AND si2.status IN ('paid', 'open')
                        AND si2.amount_due > 0
+                       AND si2.created_at >= date(?, '-35 days')
                      ORDER BY si2.created_at DESC
                      LIMIT 1
                  )
-                 AND created_at >= date(?, '-90 days')
                ORDER BY monthly_revenue DESC""",
-            (now,),
+            (now, now),
         ).fetchall()
         for r in rows:
             if r["monthly_revenue"] and r["monthly_revenue"] > 0:
@@ -485,10 +496,11 @@ def get_active_subscriptions_by_client():
 
     conn.close()
 
-    # Sort by monthly revenue descending
+    # Sort by monthly revenue descending, excluding churned clients
     results = [
         {"customer_name": name, "monthly_revenue": rev}
         for name, rev in sorted(clients.items(), key=lambda x: -x[1])
+        if name not in CHURNED_CLIENTS
     ]
     return results
 
