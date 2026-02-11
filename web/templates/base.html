@@ -9,7 +9,18 @@
 </head>
 <body>
     <nav>
-        <div class="nav-brand">Finance Dashboard</div>
+        <div class="nav-inner">
+            <div class="nav-brand">Finance Dashboard</div>
+            <button id="slack-report-btn" class="btn-slack" onclick="pushSlackReport()">
+                <svg width="20" height="20" viewBox="0 0 124 124" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M26.4 78.2c0 7.2-5.8 13-13 13s-13-5.8-13-13 5.8-13 13-13h13v13zm6.5 0c0-7.2 5.8-13 13-13s13 5.8 13 13v32.6c0 7.2-5.8 13-13 13s-13-5.8-13-13V78.2z" fill="#E01E5A"/>
+                    <path d="M45.9 26.4c-7.2 0-13-5.8-13-13s5.8-13 13-13 13 5.8 13 13v13H45.9zm0 6.5c7.2 0 13 5.8 13 13s-5.8 13-13 13H13.3c-7.2 0-13-5.8-13-13s5.8-13 13-13h32.6z" fill="#36C5F0"/>
+                    <path d="M97.6 45.9c0-7.2 5.8-13 13-13s13 5.8 13 13-5.8 13-13 13h-13V45.9zm-6.5 0c0 7.2-5.8 13-13 13s-13-5.8-13-13V13.3c0-7.2 5.8-13 13-13s13 5.8 13 13v32.6z" fill="#2EB67D"/>
+                    <path d="M78.1 97.6c7.2 0 13 5.8 13 13s-5.8 13-13 13-13-5.8-13-13v-13h13zm0-6.5c-7.2 0-13-5.8-13-13s5.8-13 13-13h32.6c7.2 0 13 5.8 13 13s-5.8 13-13 13H78.1z" fill="#ECB22E"/>
+                </svg>
+                <span>Push Report</span>
+            </button>
+        </div>
     </nav>
     <main>
         {% block content %}{% endblock %}

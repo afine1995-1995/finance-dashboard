@@ -17,9 +17,50 @@ nav {
     border-bottom: 1px solid #2a2a4a;
 }
 
+.nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
 .nav-brand {
     font-size: 1.25rem;
     font-weight: 600;
+}
+
+.btn-slack {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    border: none;
+    border-radius: 8px;
+    background: #4A154B;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.btn-slack:hover:not(:disabled) {
+    background: #611f69;
+    transform: translateY(-1px);
+}
+
+.btn-slack:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.btn-slack:disabled {
+    opacity: 0.7;
+    cursor: default;
+}
+
+.btn-slack svg {
+    flex-shrink: 0;
 }
 
 main {

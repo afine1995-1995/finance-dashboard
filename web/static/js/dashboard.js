@@ -1,3 +1,36 @@
+async function pushSlackReport() {
+    const btn = document.getElementById("slack-report-btn");
+    const label = btn.querySelector("span");
+    const original = label.textContent;
+
+    btn.disabled = true;
+    label.textContent = "Sending...";
+
+    try {
+        const resp = await fetch("/api/slack/weekly-summary");
+        const data = await resp.json();
+        if (data.success) {
+            label.textContent = "Sent!";
+            btn.style.background = "#2EB67D";
+            setTimeout(() => {
+                label.textContent = original;
+                btn.style.background = "";
+                btn.disabled = false;
+            }, 3000);
+        } else {
+            throw new Error(data.error || "Unknown error");
+        }
+    } catch (err) {
+        label.textContent = "Failed";
+        btn.style.background = "#e74c3c";
+        setTimeout(() => {
+            label.textContent = original;
+            btn.style.background = "";
+            btn.disabled = false;
+        }, 3000);
+    }
+}
+
 async function loadChart(url, elementId) {
     try {
         const resp = await fetch(url);
