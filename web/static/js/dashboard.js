@@ -103,11 +103,62 @@ async function remindAllOverdue() {
     }
 }
 
+function isMobile() {
+    return window.innerWidth <= 768;
+}
+
+function applyMobileLayout(fig) {
+    if (!isMobile()) return;
+
+    // Tighter margins so chart data fills the small screen
+    fig.layout.margin = { l: 45, r: 10, t: 40, b: 50 };
+
+    // Smaller title
+    if (fig.layout.title && fig.layout.title.font) {
+        fig.layout.title.font.size = 15;
+    }
+
+    // Smaller axis labels and ticks
+    ["xaxis", "yaxis"].forEach(function (axis) {
+        var ax = fig.layout[axis];
+        if (!ax) return;
+        if (ax.tickfont) ax.tickfont.size = 9;
+        if (ax.title && ax.title.font) ax.title.font.size = 10;
+    });
+
+    // Smaller legend tucked below chart
+    if (fig.layout.legend) {
+        fig.layout.legend.font = fig.layout.legend.font || {};
+        fig.layout.legend.font.size = 9;
+        fig.layout.legend.y = -0.25;
+    }
+
+    // Smaller annotation labels
+    if (fig.layout.annotations) {
+        fig.layout.annotations.forEach(function (a) {
+            if (a.font && a.font.size) a.font.size = Math.min(a.font.size, 9);
+        });
+    }
+
+    // Smaller text on bar/trace labels
+    if (fig.data) {
+        fig.data.forEach(function (trace) {
+            if (trace.textfont && trace.textfont.size) {
+                trace.textfont.size = Math.min(trace.textfont.size, 10);
+            }
+        });
+    }
+}
+
 async function loadChart(url, elementId) {
     try {
         const resp = await fetch(url);
         const fig = await resp.json();
-        Plotly.newPlot(elementId, fig.data, fig.layout, { responsive: true });
+        applyMobileLayout(fig);
+        Plotly.newPlot(elementId, fig.data, fig.layout, {
+            responsive: true,
+            displayModeBar: !isMobile()
+        });
     } catch (err) {
         console.error(`Failed to load chart ${elementId}:`, err);
         document.getElementById(elementId).innerHTML =
@@ -160,8 +211,12 @@ async function loadSpendDetail(month, category) {
     try {
         const resp = await fetch(`/api/charts/spend-detail?${params}`);
         const fig = await resp.json();
+        applyMobileLayout(fig);
         showModal();
-        Plotly.newPlot("spend-detail-chart", fig.data, fig.layout, { responsive: true });
+        Plotly.newPlot("spend-detail-chart", fig.data, fig.layout, {
+            responsive: true,
+            displayModeBar: !isMobile()
+        });
     } catch (err) {
         console.error("Failed to load spend detail:", err);
     }
