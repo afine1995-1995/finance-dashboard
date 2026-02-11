@@ -701,6 +701,21 @@ def get_period_summary(start_date: str, end_date: str):
     }
 
 
+def get_ytd_owner_distributions():
+    """Return total distributed to owners in 2026."""
+    conn = get_connection()
+    row = conn.execute(
+        f"""SELECT COALESCE(SUM(ABS(amount)), 0) AS total
+           FROM mercury_transactions
+           WHERE amount < 0
+             AND COALESCE(posted_date, created_at) >= '2026-01-01'
+             AND status NOT IN ('cancelled', 'failed')
+             AND {OWNER_DISTRIBUTIONS}""",
+    ).fetchone()
+    conn.close()
+    return row["total"] or 0
+
+
 def get_ytd_collected():
     """Return total collected in 2026 via Mercury inflows (includes Stripe payouts)."""
     conn = get_connection()

@@ -95,6 +95,7 @@ async function loadBalances() {
         const fmtWhole = (n) => "$" + Math.round(Number(n)).toLocaleString("en-US");
         document.getElementById("kpi-arr").textContent = fmtWhole(data.run_rate_arr);
         document.getElementById("kpi-ytd").textContent = fmtWhole(data.ytd_collected);
+        document.getElementById("kpi-distributions").textContent = fmtWhole(data.ytd_distributions);
     } catch (err) {
         console.error("Failed to load balances:", err);
     }
