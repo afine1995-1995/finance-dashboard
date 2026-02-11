@@ -159,21 +159,24 @@ def upsert_mercury_transaction(txn: dict):
 def get_mercury_monthly_flows():
     """Return monthly inflow/outflow totals and owner distributions.
 
-    Excludes credit card transactions to avoid double-counting (the lump
-    payment from checking to Mercury Credit is already excluded via
-    EXCLUDE_INTERNAL).
+    Inflows exclude credit card transactions (no CC refunds exist and they
+    would be noise).  Outflows *include* itemized CC charges so that
+    spending is fully reflected in margin calculations.  The lump CC bill
+    payment (checking → Mercury Credit) is excluded via EXCLUDE_INTERNAL,
+    preventing double-counting.
     """
     conn = get_connection()
     rows = conn.execute(
         f"""SELECT
                strftime('%Y-%m', COALESCE(posted_date, created_at)) AS month,
-               SUM(CASE WHEN amount > 0 {EXCLUDE_INTERNAL} THEN amount ELSE 0 END) AS inflows,
+               SUM(CASE WHEN amount > 0
+                        AND kind NOT IN ('creditCardTransaction', 'cardInternationalTransactionFee')
+                        {EXCLUDE_INTERNAL} THEN amount ELSE 0 END) AS inflows,
                SUM(CASE WHEN amount < 0 {EXCLUDE_INTERNAL} THEN ABS(amount) ELSE 0 END) AS outflows,
                SUM(CASE WHEN amount < 0 AND {OWNER_DISTRIBUTIONS} THEN ABS(amount) ELSE 0 END) AS owner_distributions
            FROM mercury_transactions
            WHERE COALESCE(posted_date, created_at) IS NOT NULL
              AND status NOT IN ('cancelled', 'failed')
-             AND kind NOT IN ('creditCardTransaction', 'cardInternationalTransactionFee')
            GROUP BY month
            ORDER BY month"""
     ).fetchall()
@@ -741,12 +744,13 @@ def get_period_summary(start_date: str, end_date: str):
     conn = get_connection()
     mercury = conn.execute(
         f"""SELECT
-               SUM(CASE WHEN amount > 0 {EXCLUDE_INTERNAL} THEN amount ELSE 0 END) AS inflows,
+               SUM(CASE WHEN amount > 0
+                        AND kind NOT IN ('creditCardTransaction', 'cardInternationalTransactionFee')
+                        {EXCLUDE_INTERNAL} THEN amount ELSE 0 END) AS inflows,
                SUM(CASE WHEN amount < 0 {EXCLUDE_INTERNAL} THEN ABS(amount) ELSE 0 END) AS outflows
            FROM mercury_transactions
            WHERE COALESCE(posted_date, created_at) BETWEEN ? AND ?
-             AND status NOT IN ('cancelled', 'failed')
-             AND kind NOT IN ('creditCardTransaction', 'cardInternationalTransactionFee')""",
+             AND status NOT IN ('cancelled', 'failed')""",
         (start_date, end_date),
     ).fetchone()
 
@@ -795,7 +799,7 @@ def get_ytd_owner_distributions():
 
 
 def get_ytd_outflows():
-    """Return total money out in 2026 via Mercury outflows."""
+    """Return total money out in 2026 via Mercury outflows (includes CC charges)."""
     conn = get_connection()
     row = conn.execute(
         f"""SELECT COALESCE(SUM(ABS(amount)), 0) AS total
@@ -803,7 +807,6 @@ def get_ytd_outflows():
            WHERE amount < 0
              AND COALESCE(posted_date, created_at) >= '2026-01-01'
              AND status NOT IN ('cancelled', 'failed')
-             AND kind NOT IN ('creditCardTransaction', 'cardInternationalTransactionFee')
              {EXCLUDE_INTERNAL}""",
     ).fetchone()
     conn.close()
@@ -901,12 +904,13 @@ def get_mtd_report(start_date: str, end_date: str):
     # Mercury inflows / outflows
     mercury = conn.execute(
         f"""SELECT
-               SUM(CASE WHEN amount > 0 {EXCLUDE_INTERNAL} THEN amount ELSE 0 END) AS inflows,
+               SUM(CASE WHEN amount > 0
+                        AND kind NOT IN ('creditCardTransaction', 'cardInternationalTransactionFee')
+                        {EXCLUDE_INTERNAL} THEN amount ELSE 0 END) AS inflows,
                SUM(CASE WHEN amount < 0 {EXCLUDE_INTERNAL} THEN ABS(amount) ELSE 0 END) AS outflows
            FROM mercury_transactions
            WHERE COALESCE(posted_date, created_at) BETWEEN ? AND ?
-             AND status NOT IN ('cancelled', 'failed')
-             AND kind NOT IN ('creditCardTransaction', 'cardInternationalTransactionFee')""",
+             AND status NOT IN ('cancelled', 'failed')""",
         (start_date, end_date),
     ).fetchone()
 
@@ -968,7 +972,6 @@ def get_mtd_report(start_date: str, end_date: str):
            WHERE amount < 0
              AND COALESCE(posted_date, created_at) BETWEEN ? AND ?
              AND status NOT IN ('cancelled', 'failed')
-             AND kind NOT IN ('creditCardTransaction', 'cardInternationalTransactionFee')
              {EXCLUDE_INTERNAL}
            GROUP BY counterparty_name, kind
            ORDER BY total DESC""",
@@ -983,12 +986,13 @@ def get_mtd_report(start_date: str, end_date: str):
 
     prev_mercury = conn.execute(
         f"""SELECT
-               SUM(CASE WHEN amount > 0 {EXCLUDE_INTERNAL} THEN amount ELSE 0 END) AS inflows,
+               SUM(CASE WHEN amount > 0
+                        AND kind NOT IN ('creditCardTransaction', 'cardInternationalTransactionFee')
+                        {EXCLUDE_INTERNAL} THEN amount ELSE 0 END) AS inflows,
                SUM(CASE WHEN amount < 0 {EXCLUDE_INTERNAL} THEN ABS(amount) ELSE 0 END) AS outflows
            FROM mercury_transactions
            WHERE COALESCE(posted_date, created_at) BETWEEN ? AND ?
-             AND status NOT IN ('cancelled', 'failed')
-             AND kind NOT IN ('creditCardTransaction', 'cardInternationalTransactionFee')""",
+             AND status NOT IN ('cancelled', 'failed')""",
         (prev_start, prev_end),
     ).fetchone()
 
