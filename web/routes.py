@@ -31,7 +31,7 @@ def dashboard():
 
 @bp.route("/api/balances")
 def api_balances():
-    from models.queries import get_last_month_collected
+    from models.queries import get_last_month_collected, get_ytd_collected
     stripe_bal = get_stripe_balance()
     mercury_bal = get_mercury_balance()
     last_month_collected = get_last_month_collected()
@@ -41,6 +41,7 @@ def api_balances():
         "stripe_pending": stripe_bal["pending"],
         "run_rate_arr": last_month_collected * 12,
         "last_month_collected": last_month_collected,
+        "ytd_collected": get_ytd_collected(),
     })
 
 

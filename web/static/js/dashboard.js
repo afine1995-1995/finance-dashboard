@@ -94,6 +94,7 @@ async function loadBalances() {
         }
         const fmtWhole = (n) => "$" + Math.round(Number(n)).toLocaleString("en-US");
         document.getElementById("kpi-arr").textContent = fmtWhole(data.run_rate_arr);
+        document.getElementById("kpi-ytd").textContent = fmtWhole(data.ytd_collected);
     } catch (err) {
         console.error("Failed to load balances:", err);
     }
