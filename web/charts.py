@@ -719,6 +719,26 @@ def build_spend_by_category_chart() -> str:
             hoverinfo="text",
         ))
 
+    # Add total spend labels at the top of each stacked bar
+    monthly_totals = [
+        sum(cat_data.get(m, {}).get(c, 0) for c in SPEND_CATEGORIES)
+        for m in months
+    ]
+    for m, total in zip(months, monthly_totals):
+        if total > 0:
+            if total >= 1000:
+                label = f"${total / 1000:,.0f}k"
+            else:
+                label = f"${total:,.0f}"
+            fig.add_annotation(
+                x=m,
+                y=total,
+                text=label,
+                showarrow=False,
+                font=dict(color=TEXT_COLOR, size=11),
+                yshift=10,
+            )
+
     fig.update_layout(
         barmode="stack",
         title=dict(
