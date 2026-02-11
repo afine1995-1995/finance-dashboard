@@ -5,7 +5,8 @@ from flask import Blueprint, Response, jsonify, render_template, request
 
 from models.queries import get_open_invoices_for_client, get_all_late_invoices, mark_email_sent
 from services.email_service import send_reminder_email
-from services.stripe_service import get_fresh_invoice
+from services.stripe_service import get_fresh_invoice, get_balance as get_stripe_balance
+from services.mercury_service import get_total_balance as get_mercury_balance
 from scheduler.jobs import post_weekly_summary, post_mtd_report, post_overdue_report
 from web.charts import (
     build_in_vs_out_chart,
@@ -26,6 +27,17 @@ bp = Blueprint("web", __name__, template_folder="templates", static_folder="stat
 @bp.route("/")
 def dashboard():
     return render_template("dashboard.html")
+
+
+@bp.route("/api/balances")
+def api_balances():
+    stripe_bal = get_stripe_balance()
+    mercury_bal = get_mercury_balance()
+    return jsonify({
+        "mercury": mercury_bal,
+        "stripe_available": stripe_bal["available"],
+        "stripe_pending": stripe_bal["pending"],
+    })
 
 
 @bp.route("/api/charts/in-vs-out")

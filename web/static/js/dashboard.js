@@ -81,7 +81,24 @@ async function loadChart(url, elementId) {
     }
 }
 
+async function loadBalances() {
+    try {
+        const resp = await fetch("/api/balances");
+        const data = await resp.json();
+        const fmt = (n) => "$" + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById("kpi-mercury").textContent = fmt(data.mercury);
+        const stripeEl = document.getElementById("kpi-stripe");
+        stripeEl.textContent = fmt(data.stripe_available);
+        if (data.stripe_pending > 0) {
+            stripeEl.textContent += ` (+${fmt(data.stripe_pending)} pending)`;
+        }
+    } catch (err) {
+        console.error("Failed to load balances:", err);
+    }
+}
+
 function loadAll() {
+    loadBalances();
     loadChart("/api/charts/in-vs-out", "in-vs-out-chart");
     loadChart("/api/charts/profit-margin", "profit-margin-chart");
     loadChart("/api/charts/spend-by-category", "spend-by-category-chart").then(attachSpendClickHandler);
