@@ -1,8 +1,8 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
-from services.stripe_service import sync_invoices, sync_subscriptions
-from services.mercury_service import sync_transactions
+from services.stripe_service import sync_invoices, sync_subscriptions, get_balance as get_stripe_balance
+from services.mercury_service import sync_transactions, get_total_balance as get_mercury_balance
 from services.slack_service import post_message
 from models.queries import get_late_invoices, get_all_late_invoices, mark_notified, get_period_summary, get_mtd_report
 from slack_bot.messages import late_payment_alert, overdue_invoice_report, mtd_report, weekly_summary
@@ -78,6 +78,14 @@ def post_mtd_report():
     month_label = now.strftime("%B %Y")
 
     report = get_mtd_report(start_date, end_date)
+
+    # Fetch live balances
+    stripe_bal = get_stripe_balance()
+    mercury_bal = get_mercury_balance()
+    report["stripe_balance"] = stripe_bal["available"]
+    report["stripe_pending"] = stripe_bal["pending"]
+    report["mercury_balance"] = mercury_bal
+
     blocks = mtd_report(report, month_label, start_date, end_date)
     text = f"{month_label} report: ${report['inflows']:,.2f} in / ${report['outflows']:,.2f} out / net ${report['net']:,.2f}"
 

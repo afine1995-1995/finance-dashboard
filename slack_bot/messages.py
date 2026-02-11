@@ -199,6 +199,21 @@ def mtd_report(report: dict, month_label: str, start_date: str, end_date: str) -
             "type": "section",
             "text": {
                 "type": "mrkdwn",
+                "text": "*:moneybag: Account Balances*",
+            },
+        },
+        {
+            "type": "section",
+            "fields": [
+                {"type": "mrkdwn", "text": f"*Mercury:*\n${report.get('mercury_balance', 0):,.2f}"},
+                {"type": "mrkdwn", "text": f"*Stripe:*\n${report.get('stripe_balance', 0):,.2f}" + (f" (+${report.get('stripe_pending', 0):,.2f} pending)" if report.get("stripe_pending", 0) > 0 else "")},
+            ],
+        },
+        {"type": "divider"},
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
                 "text": f"*:trophy: Top Customers by Revenue*\n{top_customers_text}",
             },
         },

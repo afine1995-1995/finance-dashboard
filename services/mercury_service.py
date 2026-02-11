@@ -58,6 +58,17 @@ def _get_credit_accounts():
     return resp.json().get("accounts", [])
 
 
+def get_total_balance() -> float:
+    """Fetch the total balance across all Mercury accounts."""
+    try:
+        accounts = _get_accounts()
+        total = sum(a.get("currentBalance", 0) for a in accounts)
+        return total
+    except Exception as e:
+        logger.error(f"Failed to fetch Mercury balance: {e}")
+        return 0
+
+
 def sync_transactions():
     """Fetch all Mercury transactions across all accounts (including credit card) and cache in SQLite."""
     logger.info("Syncing Mercury transactions...")

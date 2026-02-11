@@ -131,6 +131,19 @@ def sync_subscriptions():
     return count
 
 
+def get_balance() -> dict:
+    """Fetch the current Stripe balance."""
+    try:
+        balance = stripe.Balance.retrieve()
+        # available and pending are lists of {amount, currency} objects
+        available = sum(b.amount for b in balance.available) / 100.0
+        pending = sum(b.amount for b in balance.pending) / 100.0
+        return {"available": available, "pending": pending, "total": available + pending}
+    except Exception as e:
+        logger.error(f"Failed to fetch Stripe balance: {e}")
+        return {"available": 0, "pending": 0, "total": 0}
+
+
 def get_fresh_invoice(invoice_id: str) -> dict | None:
     """Fetch a single invoice directly from Stripe API (for email sending)."""
     try:
