@@ -86,7 +86,7 @@ def categorize_vendor(name, kind=None):
         "RAILWAY", "GAMMA", "TELLA", "WP ENGINE", "PORTER METRICS",
         "PERPLEXITY", "SQUARESPACE", "BOOMERANG", "RIVERSIDE",
         "CHECKR", "NAMECHEAP", "PERSONA", "PORKBUN", "SERPER",
-        "OTTERAD", "TRADEMIMIC", "KIIN", "ENRICH LABS", "KS-MEDIA",
+        "OTTERAD", "KIIN", "ENRICH LABS", "KS-MEDIA",
         "STORE LEADS", "TEAMFLUENCE", "LEADSFRIDAY", "LEADWAVE",
         "AMPLELEADS", "LEADS ON TREES", "FOLLOWINGG", "ENGAGERS",
         "AI ARK", "TRYKITT", "OVERVUE", "UPSCALE SYSTEMS",
@@ -100,7 +100,7 @@ def categorize_vendor(name, kind=None):
     if any(kw in upper for kw in [
         "FUELFINANCE", "AUTOMATEDEMAND", "FANBASIS", "PAYONEER",
         "REVPARTNERS", "VIVA GROWTH", "CHITLANGIA", "NOAH GREEN",
-        "COASTAL-COLLECTIVE", "LA WHENCE",
+        "COASTAL-COLLECTIVE", "LA WHENCE", "TRADEMIMIC",
     ]):
         return "Labor"
 
