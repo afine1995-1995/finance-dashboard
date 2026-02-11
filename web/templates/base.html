@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Understory Finance Dashboard</title>
+    <title>Finance Dashboard</title>
     <script src="https://cdn.plot.ly/plotly-2.35.0.min.js"></script>
     <link rel="stylesheet" href="{{ url_for('web.static', filename='css/style.css') }}">
 </head>
 <body>
     <nav>
         <div class="nav-inner">
-            <div class="nav-brand">
-                <img src="https://www.understoryagency.com/assets/6844c409487144a56cdcb66dc3b22a2a2a5b297b.png" alt="Understory" height="28" style="vertical-align: middle; margin-right: 10px;">
-                Understory Finance Dashboard
+            <div class="nav-left">
+                <img src="https://www.understoryagency.com/assets/6844c409487144a56cdcb66dc3b22a2a2a5b297b.png" alt="Understory" height="28">
             </div>
+            <div class="nav-brand">Finance Dashboard</div>
             <button id="slack-report-btn" class="btn-slack" onclick="pushSlackReport()">
                 <svg width="20" height="20" viewBox="0 0 124 124" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M26.4 78.2c0 7.2-5.8 13-13 13s-13-5.8-13-13 5.8-13 13-13h13v13zm6.5 0c0-7.2 5.8-13 13-13s13 5.8 13 13v32.6c0 7.2-5.8 13-13 13s-13-5.8-13-13V78.2z" fill="#E01E5A"/>

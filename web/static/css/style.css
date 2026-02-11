@@ -18,6 +18,7 @@ nav {
 }
 
 .nav-inner {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -25,9 +26,15 @@ nav {
     margin: 0 auto;
 }
 
-.nav-brand {
+.nav-left {
     display: flex;
     align-items: center;
+}
+
+.nav-brand {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
     font-size: 1.25rem;
     font-weight: 600;
 }
