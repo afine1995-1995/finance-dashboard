@@ -39,6 +39,12 @@ nav {
     font-weight: 600;
 }
 
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .btn-slack {
     display: inline-flex;
     align-items: center;
