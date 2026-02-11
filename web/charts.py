@@ -490,15 +490,14 @@ def build_concentration_risk_chart() -> str:
             colors=[palette[i % len(palette)] for i in range(len(names))],
             line=dict(color=BG_COLOR, width=2),
         ),
-        textinfo="percent",
-        textfont=dict(color=TEXT_COLOR, size=12),
+        textinfo="none",
         hovertemplate="<b>%{label}</b><br>$%{value:,.0f}/mo (%{percent})<extra></extra>",
     ))
 
     fig.add_annotation(
         text=f"<b>MRR: ${total:,.0f}</b>",
         xref="paper", yref="paper",
-        x=0.5, y=1.06,
+        x=0.5, y=1.12,
         showarrow=False,
         font=dict(color=GREEN, size=15),
     )
@@ -649,11 +648,11 @@ def build_expected_revenue_chart() -> str:
             bgcolor="rgba(0,0,0,0)",
             orientation="h",
             x=0.5, xanchor="center",
-            y=-0.08,
+            y=-0.18,
         ),
         paper_bgcolor=BG_COLOR,
         plot_bgcolor=BG_COLOR,
-        margin=dict(l=200, r=40, t=140, b=60),
+        margin=dict(l=200, r=40, t=140, b=90),
         height=550,
         hoverlabel=dict(
             bgcolor="#2a2a4a",
