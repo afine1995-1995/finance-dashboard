@@ -81,8 +81,9 @@ def sync_subscriptions():
             status="active", limit=100, expand=["data.customer"]
         ).auto_paging_iter():
             # Calculate monthly amount from subscription items
+            # Note: sub["items"] avoids conflict with dict.items() method
             monthly_amount = 0
-            for item in sub.items.data:
+            for item in sub["items"]["data"]:
                 price = item.price
                 amount = (price.unit_amount or 0) / 100.0
                 quantity = item.quantity or 1
