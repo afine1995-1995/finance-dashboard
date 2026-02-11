@@ -382,51 +382,70 @@ def _get_active_client_ids():
 
 
 def get_active_subscriptions_by_client():
-    """Return active clients with monthly revenue.
+    """Return current active clients with monthly revenue.
 
-    Uses Stripe subscriptions table if populated. Otherwise falls back
-    to deriving active clients from invoices in the last 90 days.
-    Multiple subscriptions/invoices per client are aggregated.
+    Combines two sources:
+    1. Stripe active subscriptions (monthly_amount from subscription items)
+    2. Mercury direct payers (clients who pay via wire/ACH, not through Stripe)
+
+    Mercury direct payers are identified from inflows in the last 90 days,
+    excluding Stripe payouts, internal transfers, and non-client amounts.
+    Their monthly revenue is calculated as total / number of months active.
     """
     conn = get_connection()
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    clients = {}  # {name: monthly_revenue}
 
+    # 1. Stripe active subscriptions
     if _has_subscriptions():
         rows = conn.execute(
             """SELECT customer_name,
-                   SUM(monthly_amount) AS monthly_revenue,
-                   COUNT(*) AS subscription_count
+                   SUM(monthly_amount) AS monthly_revenue
                FROM stripe_subscriptions
                WHERE status = 'active'
                  AND customer_name IS NOT NULL
-               GROUP BY customer_name
-               ORDER BY monthly_revenue DESC"""
+               GROUP BY customer_name"""
         ).fetchall()
-        conn.close()
-        return [dict(r) for r in rows]
+        for r in rows:
+            if r["monthly_revenue"] and r["monthly_revenue"] > 0:
+                clients[r["customer_name"]] = r["monthly_revenue"]
 
-    # Fallback: derive from recent invoices
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    # 2. Mercury direct payers (last 90 days, excluding Stripe payouts and internal)
     rows = conn.execute(
-        """SELECT customer_name,
-               COUNT(DISTINCT strftime('%%Y-%%m', created_at)) AS months_active,
-               SUM(amount_due) AS total_invoiced
-           FROM stripe_invoices
-           WHERE customer_name IS NOT NULL
-             AND status IN ('paid', 'open')
-             AND created_at >= date(?, '-90 days')
-           GROUP BY customer_name
-           HAVING total_invoiced > 0
-           ORDER BY total_invoiced DESC""",
+        f"""SELECT counterparty_name,
+               SUM(amount) AS total,
+               COUNT(DISTINCT strftime('%%Y-%%m', COALESCE(posted_date, created_at))) AS months_active
+           FROM mercury_transactions
+           WHERE amount > 0
+             AND COALESCE(posted_date, created_at) >= date(?, '-90 days')
+             AND status NOT IN ('cancelled', 'failed')
+             AND kind NOT IN ('creditCardTransaction', 'cardInternationalTransactionFee')
+             AND counterparty_name != 'STRIPE'
+             AND counterparty_name NOT LIKE 'Savings Interest%'
+             AND counterparty_name NOT LIKE '%Cashback%'
+             AND counterparty_name NOT LIKE '%ANTHEM%'
+             AND counterparty_name NOT LIKE '%Kaiser%'
+             AND counterparty_name NOT LIKE '%JP Morgan%'
+             {EXCLUDE_INTERNAL}
+           GROUP BY counterparty_name
+           HAVING total >= 1000""",
         (now,),
     ).fetchall()
+
+    for r in rows:
+        name = r["counterparty_name"]
+        months = max(r["months_active"], 1)
+        monthly = round(r["total"] / months, 2)
+        # Add to existing (unlikely overlap) or set
+        clients[name] = clients.get(name, 0) + monthly
+
     conn.close()
 
-    results = []
-    for r in rows:
-        d = dict(r)
-        months = max(d.pop("months_active"), 1)
-        d["monthly_revenue"] = round(d.pop("total_invoiced") / months, 2)
-        results.append(d)
+    # Sort by monthly revenue descending
+    results = [
+        {"customer_name": name, "monthly_revenue": rev}
+        for name, rev in sorted(clients.items(), key=lambda x: -x[1])
+    ]
     return results
 
 
