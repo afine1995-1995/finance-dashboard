@@ -92,7 +92,8 @@ async function loadBalances() {
         if (data.stripe_pending > 0) {
             stripeEl.textContent += ` (+${fmt(data.stripe_pending)} pending)`;
         }
-        document.getElementById("kpi-arr").textContent = fmt(data.run_rate_arr);
+        const fmtWhole = (n) => "$" + Math.round(Number(n)).toLocaleString("en-US");
+        document.getElementById("kpi-arr").textContent = fmtWhole(data.run_rate_arr);
     } catch (err) {
         console.error("Failed to load balances:", err);
     }

@@ -702,7 +702,7 @@ def get_period_summary(start_date: str, end_date: str):
 
 
 def get_last_month_collected():
-    """Return total amount paid on Stripe invoices last month."""
+    """Return total collected last month across Mercury inflows and Stripe payments."""
     now = datetime.now(timezone.utc)
     # First day of current month
     first_of_this_month = now.replace(day=1).strftime("%Y-%m-%d")
@@ -713,15 +713,19 @@ def get_last_month_collected():
         first_of_last_month = now.replace(month=now.month - 1, day=1).strftime("%Y-%m-%d")
 
     conn = get_connection()
-    row = conn.execute(
-        """SELECT COALESCE(SUM(amount_paid), 0) AS total
-           FROM stripe_invoices
-           WHERE paid_at >= ? AND paid_at < ?
-             AND amount_paid > 0""",
+    mercury_row = conn.execute(
+        f"""SELECT COALESCE(SUM(amount), 0) AS total
+           FROM mercury_transactions
+           WHERE amount > 0
+             AND COALESCE(posted_date, created_at) >= ?
+             AND COALESCE(posted_date, created_at) < ?
+             AND status NOT IN ('cancelled', 'failed')
+             AND kind NOT IN ('creditCardTransaction', 'cardInternationalTransactionFee')
+             {EXCLUDE_INTERNAL}""",
         (first_of_last_month, first_of_this_month),
     ).fetchone()
     conn.close()
-    return row["total"] or 0
+    return mercury_row["total"] or 0
 
 
 def get_mtd_report(start_date: str, end_date: str):
