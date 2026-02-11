@@ -110,41 +110,107 @@ function isMobile() {
 function applyMobileLayout(fig) {
     if (!isMobile()) return;
 
-    // Tighter margins so chart data fills the small screen
-    fig.layout.margin = { l: 45, r: 10, t: 40, b: 50 };
-
-    // Smaller title
-    if (fig.layout.title && fig.layout.title.font) {
-        fig.layout.title.font.size = 15;
+    // --- Detect chart characteristics ---
+    var hasHorizontalBars = false;
+    var hasPie = false;
+    if (fig.data) {
+        fig.data.forEach(function (trace) {
+            if (trace.orientation === "h") hasHorizontalBars = true;
+            if (trace.type === "pie") hasPie = true;
+        });
     }
 
-    // Smaller axis labels and ticks
+    var hasTopAnnotations = false;
+    if (fig.layout.annotations) {
+        fig.layout.annotations.forEach(function (a) {
+            if (a.yref === "paper" && a.y > 1.05) hasTopAnnotations = true;
+        });
+    }
+
+    // --- Margins per chart type ---
+    if (hasPie) {
+        fig.layout.margin = { l: 10, r: 10, t: 50, b: 10 };
+    } else if (hasHorizontalBars) {
+        fig.layout.margin = { l: 110, r: 50, t: hasTopAnnotations ? 100 : 50, b: 40 };
+    } else {
+        fig.layout.margin = { l: 45, r: 10, t: hasTopAnnotations ? 90 : 40, b: 60 };
+    }
+
+    // Cap explicit height for horizontal bar charts
+    if (fig.layout.height && hasHorizontalBars) {
+        fig.layout.height = Math.min(fig.layout.height, 350);
+    }
+
+    // --- Title ---
+    if (fig.layout.title && fig.layout.title.font) {
+        fig.layout.title.font.size = 14;
+    }
+
+    // --- Axes ---
     ["xaxis", "yaxis"].forEach(function (axis) {
         var ax = fig.layout[axis];
         if (!ax) return;
         if (ax.tickfont) ax.tickfont.size = 9;
         if (ax.title && ax.title.font) ax.title.font.size = 10;
     });
+    // Rotate x-axis month labels so they don't overlap
+    if (!hasHorizontalBars && !hasPie && fig.layout.xaxis) {
+        fig.layout.xaxis.tickangle = -45;
+    }
 
-    // Smaller legend tucked below chart
+    // --- Legend ---
     if (fig.layout.legend) {
         fig.layout.legend.font = fig.layout.legend.font || {};
         fig.layout.legend.font.size = 9;
-        fig.layout.legend.y = -0.25;
+        fig.layout.legend.y = Math.min(fig.layout.legend.y != null ? fig.layout.legend.y : 0, -0.3);
     }
 
-    // Smaller annotation labels
+    // --- Annotations ---
     if (fig.layout.annotations) {
+        var kept = [];
         fig.layout.annotations.forEach(function (a) {
-            if (a.font && a.font.size) a.font.size = Math.min(a.font.size, 9);
+            // Remove right-side panel annotations (in-vs-out summary)
+            if (a.xref === "paper" && a.x > 1.0) return;
+
+            // Shrink + compact top-area annotations (margin averages, totals)
+            if (a.yref === "paper" && a.y > 1.05) {
+                if (a.font && a.font.size >= 20) {
+                    a.font.size = 14;
+                    if (a.y > 1.1 && a.y < 1.2) a.y -= 0.02;
+                } else if (a.font) {
+                    a.font.size = Math.min(a.font.size, 9);
+                    if (a.y > 1.2) a.y -= 0.04;
+                }
+                kept.push(a);
+                return;
+            }
+
+            // Regular annotations (bar totals, reference labels)
+            if (a.font && a.font.size) {
+                a.font.size = Math.min(a.font.size, 9);
+            }
+            kept.push(a);
         });
+        fig.layout.annotations = kept;
     }
 
-    // Smaller text on bar/trace labels
+    // --- Traces ---
     if (fig.data) {
         fig.data.forEach(function (trace) {
-            if (trace.textfont && trace.textfont.size) {
-                trace.textfont.size = Math.min(trace.textfont.size, 10);
+            // Hide text-only scatter traces (net labels on in-vs-out)
+            if (trace.mode === "text") {
+                trace.visible = false;
+                return;
+            }
+
+            // Horizontal bar "outside" text clips off-screen — use auto
+            if (trace.textposition === "outside" && hasHorizontalBars) {
+                trace.textposition = "auto";
+            }
+
+            // Shrink all trace text
+            if (trace.textfont) {
+                trace.textfont.size = Math.min(trace.textfont.size || 12, 9);
             }
         });
     }
