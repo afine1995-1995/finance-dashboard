@@ -87,11 +87,8 @@ async function loadBalances() {
         const data = await resp.json();
         const fmt = (n) => "$" + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         document.getElementById("kpi-mercury").textContent = fmt(data.mercury);
-        const stripeEl = document.getElementById("kpi-stripe");
-        stripeEl.textContent = fmt(data.stripe_available);
-        if (data.stripe_pending > 0) {
-            stripeEl.textContent += ` (+${fmt(data.stripe_pending)} pending)`;
-        }
+        const stripeTotal = Number(data.stripe_available) + Number(data.stripe_pending);
+        document.getElementById("kpi-stripe").textContent = fmt(stripeTotal);
         const fmtWhole = (n) => "$" + Math.round(Number(n)).toLocaleString("en-US");
         document.getElementById("kpi-arr").textContent = fmtWhole(data.run_rate_arr);
         document.getElementById("kpi-ytd").textContent = fmtWhole(data.ytd_collected);
