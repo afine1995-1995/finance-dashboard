@@ -7,7 +7,7 @@ async function pushSlackReport() {
     label.textContent = "Sending...";
 
     try {
-        const resp = await fetch("/api/slack/weekly-summary");
+        const resp = await fetch("/api/slack/mtd-report");
         const data = await resp.json();
         if (data.success) {
             label.textContent = "Sent!";

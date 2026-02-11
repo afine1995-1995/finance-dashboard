@@ -6,7 +6,7 @@ from flask import Blueprint, Response, jsonify, render_template, request
 from models.queries import get_open_invoices_for_client, mark_email_sent
 from services.email_service import send_reminder_email
 from services.stripe_service import get_fresh_invoice
-from scheduler.jobs import post_weekly_summary, post_overdue_report
+from scheduler.jobs import post_weekly_summary, post_mtd_report, post_overdue_report
 from web.charts import (
     build_in_vs_out_chart,
     build_profit_margin_chart,
@@ -77,6 +77,16 @@ def api_trigger_weekly_summary():
         return jsonify({"success": True, "message": "Weekly summary posted to Slack"})
     except Exception as e:
         logger.error(f"Failed to trigger weekly summary: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/slack/mtd-report", methods=["GET", "POST"])
+def api_trigger_mtd_report():
+    try:
+        post_mtd_report()
+        return jsonify({"success": True, "message": "Month-to-date report posted to Slack"})
+    except Exception as e:
+        logger.error(f"Failed to trigger MTD report: {e}")
         return jsonify({"error": str(e)}), 500
 
 

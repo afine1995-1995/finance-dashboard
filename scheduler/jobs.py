@@ -4,8 +4,8 @@ from datetime import datetime, timedelta, timezone
 from services.stripe_service import sync_invoices, sync_subscriptions
 from services.mercury_service import sync_transactions
 from services.slack_service import post_message
-from models.queries import get_late_invoices, get_all_late_invoices, mark_notified, get_period_summary
-from slack_bot.messages import late_payment_alert, overdue_invoice_report, weekly_summary
+from models.queries import get_late_invoices, get_all_late_invoices, mark_notified, get_period_summary, get_mtd_report
+from slack_bot.messages import late_payment_alert, overdue_invoice_report, mtd_report, weekly_summary
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +67,24 @@ def post_weekly_summary():
         post_message(blocks=blocks, text=text)
     except Exception as e:
         logger.error(f"Failed to post weekly summary: {e}")
+
+
+def post_mtd_report():
+    """Post a month-to-date financial report to Slack."""
+    logger.info("Posting month-to-date report...")
+    now = datetime.now(timezone.utc)
+    start_date = now.replace(day=1).strftime("%Y-%m-%d")
+    end_date = now.strftime("%Y-%m-%d")
+    month_label = now.strftime("%B %Y")
+
+    report = get_mtd_report(start_date, end_date)
+    blocks = mtd_report(report, month_label, start_date, end_date)
+    text = f"{month_label} report: ${report['inflows']:,.2f} in / ${report['outflows']:,.2f} out / net ${report['net']:,.2f}"
+
+    try:
+        post_message(blocks=blocks, text=text)
+    except Exception as e:
+        logger.error(f"Failed to post MTD report: {e}")
 
 
 def post_overdue_report():

@@ -699,3 +699,131 @@ def get_period_summary(start_date: str, end_date: str):
         "late_invoices_count": late_count["cnt"],
         "top_customers": [dict(r) for r in top_customers],
     }
+
+
+def get_mtd_report(start_date: str, end_date: str):
+    """Get a comprehensive month-to-date financial report."""
+    conn = get_connection()
+
+    # Mercury inflows / outflows
+    mercury = conn.execute(
+        f"""SELECT
+               SUM(CASE WHEN amount > 0 {EXCLUDE_INTERNAL} THEN amount ELSE 0 END) AS inflows,
+               SUM(CASE WHEN amount < 0 {EXCLUDE_INTERNAL} THEN ABS(amount) ELSE 0 END) AS outflows
+           FROM mercury_transactions
+           WHERE COALESCE(posted_date, created_at) BETWEEN ? AND ?
+             AND status NOT IN ('cancelled', 'failed')
+             AND kind NOT IN ('creditCardTransaction', 'cardInternationalTransactionFee')""",
+        (start_date, end_date),
+    ).fetchone()
+
+    # Invoices sent this period
+    invoices_sent = conn.execute(
+        """SELECT COUNT(*) AS cnt, SUM(amount_due) AS total
+           FROM stripe_invoices
+           WHERE created_at BETWEEN ? AND ?
+             AND amount_due > 0""",
+        (start_date, end_date),
+    ).fetchone()
+
+    # Invoices paid this period
+    invoices_paid = conn.execute(
+        """SELECT COUNT(*) AS cnt, SUM(amount_paid) AS total
+           FROM stripe_invoices
+           WHERE paid_at BETWEEN ? AND ?
+             AND amount_paid > 0""",
+        (start_date, end_date),
+    ).fetchone()
+
+    # Overdue invoices (as of end_date)
+    overdue = conn.execute(
+        """SELECT COUNT(*) AS cnt, SUM(amount_due) AS total
+           FROM stripe_invoices
+           WHERE status = 'open'
+             AND due_date < ?
+             AND amount_due > 0""",
+        (end_date,),
+    ).fetchone()
+
+    # Largest single payment received this period
+    largest_payment = conn.execute(
+        """SELECT customer_name, amount_paid, paid_at, number
+           FROM stripe_invoices
+           WHERE paid_at BETWEEN ? AND ?
+             AND amount_paid > 0
+           ORDER BY amount_paid DESC
+           LIMIT 1""",
+        (start_date, end_date),
+    ).fetchone()
+
+    # Top customers by revenue this period
+    top_customers = conn.execute(
+        """SELECT customer_name, SUM(amount_paid) AS total_paid
+           FROM stripe_invoices
+           WHERE paid_at BETWEEN ? AND ?
+             AND amount_paid > 0
+           GROUP BY customer_name
+           ORDER BY total_paid DESC
+           LIMIT 5""",
+        (start_date, end_date),
+    ).fetchall()
+
+    # Top spending categories this period
+    spend_rows = conn.execute(
+        f"""SELECT counterparty_name, kind, SUM(ABS(amount)) AS total
+           FROM mercury_transactions
+           WHERE amount < 0
+             AND COALESCE(posted_date, created_at) BETWEEN ? AND ?
+             AND status NOT IN ('cancelled', 'failed')
+             AND kind NOT IN ('creditCardTransaction', 'cardInternationalTransactionFee')
+             {EXCLUDE_INTERNAL}
+           GROUP BY counterparty_name, kind
+           ORDER BY total DESC""",
+        (start_date, end_date),
+    ).fetchall()
+
+    # Previous month for comparison
+    from dateutil.relativedelta import relativedelta
+    start_dt = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    prev_start = (start_dt - relativedelta(months=1)).strftime("%Y-%m-%d")
+    prev_end = (start_dt - relativedelta(days=1)).strftime("%Y-%m-%d")
+
+    prev_mercury = conn.execute(
+        f"""SELECT
+               SUM(CASE WHEN amount > 0 {EXCLUDE_INTERNAL} THEN amount ELSE 0 END) AS inflows,
+               SUM(CASE WHEN amount < 0 {EXCLUDE_INTERNAL} THEN ABS(amount) ELSE 0 END) AS outflows
+           FROM mercury_transactions
+           WHERE COALESCE(posted_date, created_at) BETWEEN ? AND ?
+             AND status NOT IN ('cancelled', 'failed')
+             AND kind NOT IN ('creditCardTransaction', 'cardInternationalTransactionFee')""",
+        (prev_start, prev_end),
+    ).fetchone()
+
+    conn.close()
+
+    inflows = mercury["inflows"] or 0
+    outflows = mercury["outflows"] or 0
+
+    # Aggregate spend by category
+    category_totals = {}
+    for r in spend_rows:
+        cat = categorize_vendor(r["counterparty_name"], r["kind"])
+        category_totals[cat] = category_totals.get(cat, 0) + r["total"]
+    top_categories = sorted(category_totals.items(), key=lambda x: -x[1])[:5]
+
+    return {
+        "inflows": inflows,
+        "outflows": outflows,
+        "net": inflows - outflows,
+        "invoices_sent_count": invoices_sent["cnt"] or 0,
+        "invoices_sent_total": invoices_sent["total"] or 0,
+        "invoices_paid_count": invoices_paid["cnt"] or 0,
+        "invoices_paid_total": invoices_paid["total"] or 0,
+        "overdue_count": overdue["cnt"] or 0,
+        "overdue_total": overdue["total"] or 0,
+        "largest_payment": dict(largest_payment) if largest_payment and largest_payment["amount_paid"] else None,
+        "top_customers": [dict(r) for r in top_customers],
+        "top_categories": top_categories,
+        "prev_inflows": prev_mercury["inflows"] or 0,
+        "prev_outflows": prev_mercury["outflows"] or 0,
+    }

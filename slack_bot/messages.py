@@ -113,6 +113,106 @@ def overdue_invoice_report(invoices: list) -> list:
     return blocks
 
 
+def mtd_report(report: dict, month_label: str, start_date: str, end_date: str) -> list:
+    """Build Block Kit blocks for a month-to-date financial report."""
+    inflows = report.get("inflows", 0)
+    outflows = report.get("outflows", 0)
+    net = report.get("net", 0)
+    net_emoji = ":chart_with_upwards_trend:" if net >= 0 else ":chart_with_downwards_trend:"
+
+    # Month-over-month comparison
+    prev_inflows = report.get("prev_inflows", 0)
+    prev_outflows = report.get("prev_outflows", 0)
+    def _pct_change(current, previous):
+        if previous == 0:
+            return ""
+        change = ((current - previous) / previous) * 100
+        arrow = ":arrow_up:" if change >= 0 else ":arrow_down:"
+        return f"  {arrow} {abs(change):.0f}% vs last month"
+
+    inflow_change = _pct_change(inflows, prev_inflows)
+    outflow_change = _pct_change(outflows, prev_outflows)
+
+    # Top customers
+    top_customers_text = ""
+    for c in report.get("top_customers", []):
+        top_customers_text += f"• {c['customer_name']}: ${c['total_paid']:,.2f}\n"
+    if not top_customers_text:
+        top_customers_text = "_No paid invoices this period_"
+
+    # Top spend categories
+    categories_text = ""
+    for cat, amount in report.get("top_categories", []):
+        categories_text += f"• {cat}: ${amount:,.2f}\n"
+    if not categories_text:
+        categories_text = "_No spending data this period_"
+
+    # Largest payment
+    largest = report.get("largest_payment")
+    largest_text = "_None this period_"
+    if largest:
+        largest_text = f"*{largest['customer_name']}* — ${largest['amount_paid']:,.2f} (Invoice {largest.get('number', 'N/A')})"
+
+    blocks = [
+        {
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": f":ledger: {month_label} Financial Report ({start_date} to {end_date})",
+            },
+        },
+        {"type": "divider"},
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "*:receipt: Invoicing*",
+            },
+        },
+        {
+            "type": "section",
+            "fields": [
+                {"type": "mrkdwn", "text": f"*Invoices Sent:*\n{report['invoices_sent_count']} (${report['invoices_sent_total']:,.2f})"},
+                {"type": "mrkdwn", "text": f"*Invoices Paid:*\n{report['invoices_paid_count']} (${report['invoices_paid_total']:,.2f})"},
+                {"type": "mrkdwn", "text": f"*Overdue:*\n:warning: {report['overdue_count']} invoices (${report['overdue_total']:,.2f})"},
+                {"type": "mrkdwn", "text": f"*Largest Payment:*\n{largest_text}"},
+            ],
+        },
+        {"type": "divider"},
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "*:bank: Cash Flow*",
+            },
+        },
+        {
+            "type": "section",
+            "fields": [
+                {"type": "mrkdwn", "text": f"*Total Revenue (Inflows):*\n${inflows:,.2f}{inflow_change}"},
+                {"type": "mrkdwn", "text": f"*Total Outflows:*\n${outflows:,.2f}{outflow_change}"},
+                {"type": "mrkdwn", "text": f"*Net:* {net_emoji}\n${net:,.2f}"},
+            ],
+        },
+        {"type": "divider"},
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"*:trophy: Top Customers by Revenue*\n{top_customers_text}",
+            },
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"*:money_with_wings: Top Spending Categories*\n{categories_text}",
+            },
+        },
+    ]
+    return blocks
+
+
 def weekly_summary(summary: dict, start_date: str, end_date: str) -> list:
     """Build Block Kit blocks for a weekly financial summary."""
     inflows = summary.get("inflows", 0)
