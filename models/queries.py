@@ -409,22 +409,23 @@ def get_active_subscriptions_by_client():
             if r["monthly_revenue"] and r["monthly_revenue"] > 0:
                 clients[r["customer_name"]] = r["monthly_revenue"]
     else:
-        # Fallback: derive from invoices created in last 90 days
-        # Group by client + creation month, then average across months
+        # Fallback: use each client's most recent invoice amount.
+        # For recurring billing, the latest invoice = current monthly rate.
         rows = conn.execute(
-            """SELECT customer_name, ROUND(AVG(monthly_total), 2) AS monthly_revenue
-               FROM (
-                   SELECT customer_name,
-                          strftime('%Y-%m', created_at) AS month,
-                          SUM(amount_due) AS monthly_total
-                   FROM stripe_invoices
-                   WHERE status IN ('paid', 'open')
-                     AND created_at >= date(?, '-90 days')
-                     AND amount_due > 0
-                     AND customer_name IS NOT NULL
-                   GROUP BY customer_name, strftime('%Y-%m', created_at)
-               )
-               GROUP BY customer_name
+            """SELECT customer_name, amount_due AS monthly_revenue
+               FROM stripe_invoices
+               WHERE status IN ('paid', 'open')
+                 AND amount_due > 0
+                 AND customer_name IS NOT NULL
+                 AND id IN (
+                     SELECT id FROM stripe_invoices si2
+                     WHERE si2.customer_name = stripe_invoices.customer_name
+                       AND si2.status IN ('paid', 'open')
+                       AND si2.amount_due > 0
+                     ORDER BY si2.created_at DESC
+                     LIMIT 1
+                 )
+                 AND created_at >= date(?, '-90 days')
                ORDER BY monthly_revenue DESC""",
             (now,),
         ).fetchall()
@@ -432,17 +433,17 @@ def get_active_subscriptions_by_client():
             if r["monthly_revenue"] and r["monthly_revenue"] > 0:
                 clients[r["customer_name"]] = r["monthly_revenue"]
 
-    # 2. Mercury direct payers (last 90 days)
+    # 2. Mercury direct payers (last 30 days only — keeps current clients, drops churned)
     # Build a lowercase set of Stripe client names for dedup matching
     stripe_names_lower = {name.lower() for name in clients}
 
     rows = conn.execute(
         f"""SELECT counterparty_name,
                SUM(amount) AS total,
-               COUNT(DISTINCT strftime('%%Y-%%m', COALESCE(posted_date, created_at))) AS months_active
+               COUNT(DISTINCT strftime('%Y-%m', COALESCE(posted_date, created_at))) AS months_active
            FROM mercury_transactions
            WHERE amount > 0
-             AND COALESCE(posted_date, created_at) >= date(?, '-90 days')
+             AND COALESCE(posted_date, created_at) >= date(?, '-30 days')
              AND status NOT IN ('cancelled', 'failed')
              AND kind NOT IN ('creditCardTransaction', 'cardInternationalTransactionFee')
              AND counterparty_name != 'STRIPE'
