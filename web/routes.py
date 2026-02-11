@@ -107,6 +107,26 @@ def api_arr_history():
     return jsonify({"months": months, "avg_mom_change": avg_mom_change})
 
 
+@bp.route("/api/margin-detail")
+def api_margin_detail():
+    from models.queries import get_mercury_monthly_flows
+    data = get_mercury_monthly_flows()
+    months = []
+    for row in data:
+        inflows = row["inflows"] or 0
+        outflows = row["outflows"] or 0
+        net = inflows - outflows
+        margin = round((net / inflows) * 100, 1) if inflows > 0 else 0
+        months.append({
+            "month": row["month"],
+            "inflows": inflows,
+            "outflows": outflows,
+            "net": net,
+            "margin": margin,
+        })
+    return jsonify({"months": months})
+
+
 @bp.route("/api/slack/weekly-summary", methods=["GET", "POST"])
 def api_trigger_weekly_summary():
     try:

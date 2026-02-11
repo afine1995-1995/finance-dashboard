@@ -136,7 +136,7 @@ async function loadBalances() {
 function loadAll() {
     loadBalances();
     loadChart("/api/charts/in-vs-out", "in-vs-out-chart");
-    loadChart("/api/charts/profit-margin", "profit-margin-chart");
+    loadChart("/api/charts/profit-margin", "profit-margin-chart").then(attachMarginClickHandler);
     loadChart("/api/charts/spend-by-category", "spend-by-category-chart").then(attachSpendClickHandler);
     loadChart("/api/charts/revenue-by-client", "revenue-by-client-chart");
     loadChart("/api/charts/concentration-risk", "concentration-risk-chart");
@@ -357,6 +357,141 @@ function attachExpectedRevenueClickHandler() {
     });
 }
 
+// --- Margin detail modal ---
+
+function showMarginModal() {
+    document.getElementById("margin-detail-modal").style.display = "flex";
+}
+
+function hideMarginModal() {
+    document.getElementById("margin-detail-modal").style.display = "none";
+}
+
+async function loadMarginDetail() {
+    const tbody = document.getElementById("margin-detail-body");
+    const tfoot = document.getElementById("margin-detail-foot");
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#888;">Loading...</td></tr>';
+    tfoot.innerHTML = "";
+    showMarginModal();
+
+    try {
+        const resp = await fetch("/api/margin-detail");
+        const data = await resp.json();
+        const months = data.months;
+
+        const fmtWhole = (n) => "$" + Math.round(Number(n)).toLocaleString("en-US");
+        const monthName = (m) => {
+            const [y, mo] = m.split("-");
+            const d = new Date(Number(y), Number(mo) - 1);
+            return d.toLocaleString("default", { month: "short", year: "numeric" });
+        };
+
+        tbody.innerHTML = "";
+        months.forEach(function (row) {
+            const tr = document.createElement("tr");
+
+            const tdMonth = document.createElement("td");
+            tdMonth.textContent = monthName(row.month);
+            tr.appendChild(tdMonth);
+
+            const tdIn = document.createElement("td");
+            tdIn.className = "text-right";
+            tdIn.textContent = fmtWhole(row.inflows);
+            tdIn.style.color = "#2ecc71";
+            tr.appendChild(tdIn);
+
+            const tdOut = document.createElement("td");
+            tdOut.className = "text-right";
+            tdOut.textContent = fmtWhole(row.outflows);
+            tdOut.style.color = "#e74c3c";
+            tr.appendChild(tdOut);
+
+            const tdNet = document.createElement("td");
+            tdNet.className = "text-right";
+            const sign = row.net >= 0 ? "+" : "-";
+            tdNet.textContent = sign + "$" + Math.round(Math.abs(row.net)).toLocaleString("en-US");
+            tdNet.style.color = row.net >= 0 ? "#2ecc71" : "#e74c3c";
+            tr.appendChild(tdNet);
+
+            const tdMargin = document.createElement("td");
+            tdMargin.className = "text-right";
+            tdMargin.textContent = row.margin.toFixed(1) + "%";
+            tdMargin.style.fontWeight = "600";
+            tdMargin.style.color = row.margin >= 0 ? "#2ecc71" : "#e74c3c";
+            tr.appendChild(tdMargin);
+
+            tbody.appendChild(tr);
+        });
+
+        // Averages footer
+        const nonZero = months.filter(function (r) { return r.inflows > 0; });
+        if (nonZero.length > 0) {
+            const avgIn = nonZero.reduce(function (s, r) { return s + r.inflows; }, 0) / nonZero.length;
+            const avgOut = nonZero.reduce(function (s, r) { return s + r.outflows; }, 0) / nonZero.length;
+            const avgNet = avgIn - avgOut;
+            const avgMargin = nonZero.reduce(function (s, r) { return s + r.margin; }, 0) / nonZero.length;
+
+            tfoot.innerHTML = "";
+            const footTr = document.createElement("tr");
+            footTr.style.borderTop = "2px solid #2a2a4a";
+
+            const tdLabel = document.createElement("td");
+            tdLabel.style.fontWeight = "600";
+            tdLabel.style.color = "#a0a0b8";
+            tdLabel.style.padding = "12px 12px";
+            tdLabel.textContent = "Average";
+            footTr.appendChild(tdLabel);
+
+            const tdAvgIn = document.createElement("td");
+            tdAvgIn.className = "text-right";
+            tdAvgIn.style.fontWeight = "600";
+            tdAvgIn.style.padding = "12px 12px";
+            tdAvgIn.style.color = "#2ecc71";
+            tdAvgIn.textContent = fmtWhole(avgIn);
+            footTr.appendChild(tdAvgIn);
+
+            const tdAvgOut = document.createElement("td");
+            tdAvgOut.className = "text-right";
+            tdAvgOut.style.fontWeight = "600";
+            tdAvgOut.style.padding = "12px 12px";
+            tdAvgOut.style.color = "#e74c3c";
+            tdAvgOut.textContent = fmtWhole(avgOut);
+            footTr.appendChild(tdAvgOut);
+
+            const tdAvgNet = document.createElement("td");
+            tdAvgNet.className = "text-right";
+            tdAvgNet.style.fontWeight = "600";
+            tdAvgNet.style.padding = "12px 12px";
+            const avgSign = avgNet >= 0 ? "+" : "-";
+            tdAvgNet.textContent = avgSign + "$" + Math.round(Math.abs(avgNet)).toLocaleString("en-US");
+            tdAvgNet.style.color = avgNet >= 0 ? "#2ecc71" : "#e74c3c";
+            footTr.appendChild(tdAvgNet);
+
+            const tdAvgMargin = document.createElement("td");
+            tdAvgMargin.className = "text-right";
+            tdAvgMargin.style.fontWeight = "600";
+            tdAvgMargin.style.padding = "12px 12px";
+            tdAvgMargin.textContent = avgMargin.toFixed(1) + "%";
+            tdAvgMargin.style.color = avgMargin >= 0 ? "#2ecc71" : "#e74c3c";
+            footTr.appendChild(tdAvgMargin);
+
+            tfoot.appendChild(footTr);
+        }
+    } catch (err) {
+        console.error("Failed to load margin detail:", err);
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#e74c3c;">Failed to load margin detail.</td></tr>';
+    }
+}
+
+function attachMarginClickHandler() {
+    const el = document.getElementById("profit-margin-chart");
+    if (!el || !el.data) return;
+
+    el.on("plotly_click", function () {
+        loadMarginDetail();
+    });
+}
+
 // --- ARR history modal ---
 
 function showArrModal() {
@@ -464,6 +599,12 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("invoice-modal-close-btn").addEventListener("click", hideInvoiceModal);
     document.getElementById("invoice-detail-modal").addEventListener("click", function (e) {
         if (e.target === this) hideInvoiceModal();
+    });
+
+    // Close margin detail modal on X button or backdrop click
+    document.getElementById("margin-modal-close-btn").addEventListener("click", hideMarginModal);
+    document.getElementById("margin-detail-modal").addEventListener("click", function (e) {
+        if (e.target === this) hideMarginModal();
     });
 
     // Close ARR history modal on X button or backdrop click
