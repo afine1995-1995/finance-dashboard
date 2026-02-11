@@ -312,6 +312,7 @@ def mark_email_sent(invoice_id: str):
     )
     conn.commit()
     conn.close()
+    return now
 
 
 # --------------- Stripe Subscriptions ---------------
@@ -684,7 +685,8 @@ def get_open_invoices_for_client(customer_name: str):
     rows = conn.execute(
         """SELECT si.id, si.number, si.customer_email, si.amount_due,
                   si.due_date, si.hosted_invoice_url,
-                  COALESCE(lpn.email_sent, 0) AS email_sent
+                  COALESCE(lpn.email_sent, 0) AS email_sent,
+                  lpn.email_sent_at
            FROM stripe_invoices si
            LEFT JOIN late_payment_notifications lpn ON si.id = lpn.invoice_id
            WHERE si.status = 'open'

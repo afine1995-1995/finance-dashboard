@@ -349,6 +349,12 @@ main {
     background: #e74c3c;
 }
 
+.last-reminded {
+    font-size: 12px;
+    color: #7f8c8d;
+    white-space: nowrap;
+}
+
 /* Remind All Overdue button */
 .btn-remind-all {
     position: absolute;

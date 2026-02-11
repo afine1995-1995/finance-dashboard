@@ -140,6 +140,7 @@ def api_open_invoices():
             "hosted_invoice_url": r["hosted_invoice_url"],
             "is_overdue": is_overdue,
             "email_sent": bool(r["email_sent"]),
+            "last_reminded": r["email_sent_at"],
         })
 
     return jsonify(invoices)
@@ -162,8 +163,8 @@ def api_send_reminder():
 
     try:
         send_reminder_email(customer_email, invoice)
-        mark_email_sent(invoice_id)
-        return jsonify({"success": True, "email": customer_email})
+        sent_at = mark_email_sent(invoice_id)
+        return jsonify({"success": True, "email": customer_email, "last_reminded": sent_at})
     except Exception as e:
         logger.error(f"Email send failed for {invoice_id}: {e}")
         return jsonify({"error": f"Failed to send email: {e}"}), 500

@@ -167,7 +167,7 @@ function formatCurrency(amount) {
 async function loadInvoicesForClient(client) {
     document.getElementById("invoice-modal-title").textContent = "Open Invoices — " + client;
     const tbody = document.getElementById("invoice-table-body");
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#888;">Loading...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#888;">Loading...</td></tr>';
     showInvoiceModal();
 
     try {
@@ -175,7 +175,7 @@ async function loadInvoicesForClient(client) {
         const invoices = await resp.json();
 
         if (!invoices.length) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#888;">No open invoices found.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#888;">No open invoices found.</td></tr>';
             return;
         }
 
@@ -234,22 +234,41 @@ async function loadInvoicesForClient(client) {
                     btn.textContent = "Send Reminder";
                     btn.className = "btn-reminder";
                     btn.addEventListener("click", function () {
-                        sendReminder(btn, inv.id);
+                        sendReminder(btn, inv.id, tdLastReminded);
                     });
                 }
                 tdAction.appendChild(btn);
             }
             tr.appendChild(tdAction);
 
+            // Last Reminded
+            const tdLastReminded = document.createElement("td");
+            tdLastReminded.className = "last-reminded";
+            if (inv.last_reminded) {
+                tdLastReminded.textContent = formatReminderDate(inv.last_reminded);
+                tdLastReminded.title = new Date(inv.last_reminded).toLocaleString();
+            } else {
+                tdLastReminded.textContent = "Never";
+            }
+            tr.appendChild(tdLastReminded);
+
             tbody.appendChild(tr);
         });
     } catch (err) {
         console.error("Failed to load invoices:", err);
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#e74c3c;">Failed to load invoices.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#e74c3c;">Failed to load invoices.</td></tr>';
     }
 }
 
-async function sendReminder(btn, invoiceId) {
+function formatReminderDate(isoString) {
+    const d = new Date(isoString);
+    const month = d.toLocaleString("default", { month: "short" });
+    const day = d.getDate();
+    const year = d.getFullYear();
+    return month + " " + day + ", " + year;
+}
+
+async function sendReminder(btn, invoiceId, lastRemindedSpan) {
     btn.disabled = true;
     btn.textContent = "Sending...";
     btn.className = "btn-reminder btn-reminder-sending";
@@ -265,6 +284,10 @@ async function sendReminder(btn, invoiceId) {
         if (resp.ok && result.success) {
             btn.textContent = "Sent \u2713";
             btn.className = "btn-reminder btn-reminder-sent";
+            if (lastRemindedSpan && result.last_reminded) {
+                lastRemindedSpan.textContent = "Last Reminded: " + formatReminderDate(result.last_reminded);
+                lastRemindedSpan.title = new Date(result.last_reminded).toLocaleString();
+            }
         } else {
             btn.textContent = "Error";
             btn.className = "btn-reminder btn-reminder-error";

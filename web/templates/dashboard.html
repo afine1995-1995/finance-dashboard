@@ -130,6 +130,7 @@
                         <th>Due Date</th>
                         <th>Status</th>
                         <th>Action</th>
+                        <th>Last Reminded</th>
                     </tr>
                 </thead>
                 <tbody id="invoice-table-body"></tbody>
@@ -140,5 +141,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('web.static', filename='js/dashboard.js') }}"></script>
+<script src="{{ url_for('web.static', filename='js/dashboard.js') }}?v=2"></script>
 {% endblock %}
