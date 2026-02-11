@@ -560,7 +560,7 @@ function hideArrModal() {
 async function loadArrHistory() {
     const tbody = document.getElementById("arr-history-body");
     const tfoot = document.getElementById("arr-history-foot");
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:#888;">Loading...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#888;">Loading...</td></tr>';
     tfoot.innerHTML = "";
     showArrModal();
 
@@ -600,15 +600,25 @@ async function loadArrHistory() {
 
             const tdChange = document.createElement("td");
             tdChange.className = "text-right";
+            const tdPct = document.createElement("td");
+            tdPct.className = "text-right";
             if (i === 0) {
                 tdChange.textContent = "—";
                 tdChange.style.color = "#888";
+                tdPct.textContent = "—";
+                tdPct.style.color = "#888";
             } else {
-                const change = row.arr - months[i - 1].arr;
+                const prevArr = months[i - 1].arr;
+                const change = row.arr - prevArr;
                 tdChange.textContent = fmtChange(change);
                 tdChange.style.color = change >= 0 ? "#2ecc71" : "#e74c3c";
+                const pct = prevArr !== 0 ? (change / prevArr) * 100 : 0;
+                const pctSign = pct >= 0 ? "+" : "";
+                tdPct.textContent = pctSign + pct.toFixed(1) + "%";
+                tdPct.style.color = pct >= 0 ? "#2ecc71" : "#e74c3c";
             }
             tr.appendChild(tdChange);
+            tr.appendChild(tdPct);
 
             tbody.appendChild(tr);
         });
@@ -634,10 +644,26 @@ async function loadArrHistory() {
         tdAvg.style.color = data.avg_mom_change >= 0 ? "#2ecc71" : "#e74c3c";
         footTr.appendChild(tdAvg);
 
+        // Average % change
+        var pctChanges = [];
+        for (var j = 1; j < months.length; j++) {
+            var prev = months[j - 1].arr;
+            if (prev !== 0) pctChanges.push(((months[j].arr - prev) / prev) * 100);
+        }
+        var avgPct = pctChanges.length > 0 ? pctChanges.reduce(function (s, v) { return s + v; }, 0) / pctChanges.length : 0;
+        const tdAvgPct = document.createElement("td");
+        tdAvgPct.className = "text-right";
+        tdAvgPct.style.fontWeight = "600";
+        tdAvgPct.style.padding = "12px 12px";
+        var avgPctSign = avgPct >= 0 ? "+" : "";
+        tdAvgPct.textContent = avgPctSign + avgPct.toFixed(1) + "%";
+        tdAvgPct.style.color = avgPct >= 0 ? "#2ecc71" : "#e74c3c";
+        footTr.appendChild(tdAvgPct);
+
         tfoot.appendChild(footTr);
     } catch (err) {
         console.error("Failed to load ARR history:", err);
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:#e74c3c;">Failed to load ARR history.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#e74c3c;">Failed to load ARR history.</td></tr>';
     }
 }
 
