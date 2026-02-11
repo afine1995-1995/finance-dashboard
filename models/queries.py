@@ -701,6 +701,29 @@ def get_period_summary(start_date: str, end_date: str):
     }
 
 
+def get_last_month_collected():
+    """Return total amount paid on Stripe invoices last month."""
+    now = datetime.now(timezone.utc)
+    # First day of current month
+    first_of_this_month = now.replace(day=1).strftime("%Y-%m-%d")
+    # First day of last month
+    if now.month == 1:
+        first_of_last_month = now.replace(year=now.year - 1, month=12, day=1).strftime("%Y-%m-%d")
+    else:
+        first_of_last_month = now.replace(month=now.month - 1, day=1).strftime("%Y-%m-%d")
+
+    conn = get_connection()
+    row = conn.execute(
+        """SELECT COALESCE(SUM(amount_paid), 0) AS total
+           FROM stripe_invoices
+           WHERE paid_at >= ? AND paid_at < ?
+             AND amount_paid > 0""",
+        (first_of_last_month, first_of_this_month),
+    ).fetchone()
+    conn.close()
+    return row["total"] or 0
+
+
 def get_mtd_report(start_date: str, end_date: str):
     """Get a comprehensive month-to-date financial report."""
     conn = get_connection()

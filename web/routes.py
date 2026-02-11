@@ -31,12 +31,16 @@ def dashboard():
 
 @bp.route("/api/balances")
 def api_balances():
+    from models.queries import get_last_month_collected
     stripe_bal = get_stripe_balance()
     mercury_bal = get_mercury_balance()
+    last_month_collected = get_last_month_collected()
     return jsonify({
         "mercury": mercury_bal,
         "stripe_available": stripe_bal["available"],
         "stripe_pending": stripe_bal["pending"],
+        "run_rate_arr": last_month_collected * 12,
+        "last_month_collected": last_month_collected,
     })
 
 
