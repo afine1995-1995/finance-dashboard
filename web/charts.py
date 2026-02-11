@@ -812,11 +812,6 @@ def build_spend_detail_chart(month: str, category: str) -> str:
         font=dict(color=color, size=15),
     )
 
-    # Show up to 15 vendors; user can scroll for more
-    visible_count = min(15, len(names))
-    y_start = len(names) - visible_count - 0.5
-    y_end = len(names) - 0.5
-
     fig.update_layout(
         title=dict(
             text=f"{category} \u2014 {month_label}",
@@ -836,12 +831,11 @@ def build_spend_detail_chart(month: str, category: str) -> str:
             tickfont=dict(color=TEXT_COLOR, size=11),
             gridcolor=GRID_COLOR,
             linecolor=GRID_COLOR,
-            range=[y_start, y_end],
         ),
         paper_bgcolor=BG_COLOR,
         plot_bgcolor=BG_COLOR,
         margin=dict(l=200, r=80, t=80, b=40),
-        height=max(350, min(len(names) * 30 + 120, 550)),
+        height=max(350, len(names) * 30 + 120),
         showlegend=False,
         hoverlabel=dict(
             bgcolor="#2a2a4a",

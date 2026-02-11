@@ -244,10 +244,10 @@ main {
     border-radius: 12px;
     box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
     width: 900px;
-    height: 600px;
     max-width: 95vw;
     max-height: 90vh;
     padding: 24px;
+    overflow-y: auto;
 }
 
 .modal-close {
