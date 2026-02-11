@@ -120,9 +120,9 @@ function applyMobileLayout(fig) {
         });
     }
 
-    // --- Merge paired top annotations into compact single-line labels ---
-    // Fixes profit-margin averages and expected-revenue totals overlapping titles
+    // --- Process annotations ---
     var hasTopAnnotations = false;
+    var manyTopAnnotations = false; // 3+ pairs like expected-revenue
     if (fig.layout.annotations) {
         var topAnns = [];
         var otherAnns = [];
@@ -132,7 +132,6 @@ function applyMobileLayout(fig) {
             if (a.yref === "paper" && a.y > 1.05) {
                 topAnns.push(a);
             } else {
-                // Shrink regular annotations (bar totals etc.)
                 if (a.font && a.font.size) a.font.size = Math.min(a.font.size, 9);
                 otherAnns.push(a);
             }
@@ -140,7 +139,9 @@ function applyMobileLayout(fig) {
 
         if (topAnns.length > 0) {
             hasTopAnnotations = true;
-            // Group top annotations by x position (label + number at same x)
+            manyTopAnnotations = topAnns.length > 2;
+
+            // Group by x position to merge label+number pairs
             var groups = {};
             topAnns.forEach(function (a) {
                 var key = Math.round(a.x * 100);
@@ -159,20 +160,20 @@ function applyMobileLayout(fig) {
                 });
 
                 if (labelAnn && numberAnn) {
-                    // Combine into one compact annotation: "Label\nValue"
                     var labelText = labelAnn.text.replace(/<\/?b>/g, "");
                     merged.push({
                         text: labelText + "<br>" + numberAnn.text,
                         xref: "paper", yref: "paper",
-                        x: numberAnn.x, y: 1.18,
+                        x: numberAnn.x, y: 1.12,
                         showarrow: false,
-                        font: { color: numberAnn.font.color, size: 10 },
+                        font: { color: numberAnn.font.color, size: hasHorizontalBars ? 8 : 10 },
                         align: "center",
                     });
                 } else {
-                    // Unpaired — just shrink
+                    // Unpaired (e.g. "Total Revenue", "Overall Avg")
                     group.forEach(function (a) {
                         if (a.font) a.font.size = Math.min(a.font.size, 9);
+                        a.y = Math.max(a.y, 1.12);
                         merged.push(a);
                     });
                 }
@@ -187,9 +188,16 @@ function applyMobileLayout(fig) {
     if (hasPie) {
         fig.layout.margin = { l: 10, r: 10, t: 50, b: 10 };
     } else if (hasHorizontalBars) {
-        fig.layout.margin = { l: 110, r: 50, t: hasTopAnnotations ? 80 : 50, b: 40 };
+        // Charts with many top annotations (expected-revenue) need more
+        // horizontal room for the 3 side-by-side labels, so use narrower l
+        fig.layout.margin = {
+            l: manyTopAnnotations ? 80 : 110,
+            r: manyTopAnnotations ? 35 : 50,
+            t: hasTopAnnotations ? 65 : 50,
+            b: 40
+        };
     } else {
-        fig.layout.margin = { l: 35, r: 8, t: hasTopAnnotations ? 70 : 30, b: 55 };
+        fig.layout.margin = { l: 35, r: 8, t: hasTopAnnotations ? 50 : 30, b: 60 };
     }
 
     // Cap explicit height for horizontal bar charts
@@ -207,18 +215,21 @@ function applyMobileLayout(fig) {
         var ax = fig.layout[axis];
         if (!ax) return;
         if (ax.tickfont) ax.tickfont.size = 9;
-        // Remove axis title text on mobile to save space
         if (ax.title) ax.title.text = "";
     });
     if (!hasHorizontalBars && !hasPie && fig.layout.xaxis) {
         fig.layout.xaxis.tickangle = -45;
     }
 
-    // --- Legend ---
+    // --- Legend: small horizontal row below chart ---
     if (fig.layout.legend) {
         fig.layout.legend.font = fig.layout.legend.font || {};
-        fig.layout.legend.font.size = 9;
-        fig.layout.legend.y = Math.min(fig.layout.legend.y != null ? fig.layout.legend.y : 0, -0.3);
+        fig.layout.legend.font.size = 8;
+        fig.layout.legend.orientation = "h";
+        fig.layout.legend.x = 0.5;
+        fig.layout.legend.xanchor = "center";
+        fig.layout.legend.y = -0.18;
+        fig.layout.legend.yanchor = "top";
     }
 
     // --- Traces ---
