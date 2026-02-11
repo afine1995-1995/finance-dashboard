@@ -490,17 +490,12 @@ def build_concentration_risk_chart() -> str:
             colors=[palette[i % len(palette)] for i in range(len(names))],
             line=dict(color=BG_COLOR, width=2),
         ),
-        textinfo="none",
+        textinfo="percent",
+        textposition="inside",
+        insidetextorientation="radial",
+        textfont=dict(color=TEXT_COLOR, size=12),
         hovertemplate="<b>%{label}</b><br>$%{value:,.0f}/mo (%{percent})<extra></extra>",
     ))
-
-    fig.add_annotation(
-        text=f"<b>MRR: ${total:,.0f}</b>",
-        xref="paper", yref="paper",
-        x=0.5, y=1.12,
-        showarrow=False,
-        font=dict(color=GREEN, size=15),
-    )
 
     fig.update_layout(
         title=dict(
@@ -575,42 +570,42 @@ def build_expected_revenue_chart() -> str:
     fig.add_annotation(
         text="<b>Outstanding</b>",
         xref="paper", yref="paper",
-        x=0.2, y=1.18,
+        x=0.2, y=1.28,
         showarrow=False,
         font=dict(color=YELLOW, size=13),
     )
     fig.add_annotation(
         text=f"<b>${total_outstanding:,.0f}</b>",
         xref="paper", yref="paper",
-        x=0.2, y=1.09,
+        x=0.2, y=1.17,
         showarrow=False,
         font=dict(color=YELLOW, size=24),
     )
     fig.add_annotation(
         text="<b>Overdue</b>",
         xref="paper", yref="paper",
-        x=0.5, y=1.18,
+        x=0.5, y=1.28,
         showarrow=False,
         font=dict(color=RED, size=13),
     )
     fig.add_annotation(
         text=f"<b>${total_overdue:,.0f}</b>",
         xref="paper", yref="paper",
-        x=0.5, y=1.09,
+        x=0.5, y=1.17,
         showarrow=False,
         font=dict(color=RED, size=24),
     )
     fig.add_annotation(
         text="<b>Total Owed</b>",
         xref="paper", yref="paper",
-        x=0.8, y=1.18,
+        x=0.8, y=1.28,
         showarrow=False,
         font=dict(color=TEXT_COLOR, size=13),
     )
     fig.add_annotation(
         text=f"<b>${total_all:,.0f}</b>",
         xref="paper", yref="paper",
-        x=0.8, y=1.09,
+        x=0.8, y=1.17,
         showarrow=False,
         font=dict(color=TEXT_COLOR, size=24),
     )
@@ -652,8 +647,8 @@ def build_expected_revenue_chart() -> str:
         ),
         paper_bgcolor=BG_COLOR,
         plot_bgcolor=BG_COLOR,
-        margin=dict(l=200, r=40, t=140, b=90),
-        height=550,
+        margin=dict(l=200, r=40, t=170, b=90),
+        height=580,
         hoverlabel=dict(
             bgcolor="#2a2a4a",
             font_color=TEXT_COLOR,
