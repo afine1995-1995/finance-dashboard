@@ -419,17 +419,11 @@ async function loadInvoicesForClient(client) {
             const tdAction = document.createElement("td");
             if (inv.is_overdue) {
                 const btn = document.createElement("button");
-                if (inv.email_sent) {
-                    btn.textContent = "Sent \u2713";
-                    btn.className = "btn-reminder btn-reminder-sent";
-                    btn.disabled = true;
-                } else {
-                    btn.textContent = "Send Reminder";
-                    btn.className = "btn-reminder";
-                    btn.addEventListener("click", function () {
-                        sendReminder(btn, inv.id, tdLastReminded);
-                    });
-                }
+                btn.textContent = "Send Reminder";
+                btn.className = "btn-reminder";
+                btn.addEventListener("click", function () {
+                    sendReminder(btn, inv.id, tdLastReminded);
+                });
                 tdAction.appendChild(btn);
             }
             tr.appendChild(tdAction);
@@ -477,8 +471,13 @@ async function sendReminder(btn, invoiceId, lastRemindedSpan) {
         if (resp.ok && result.success) {
             btn.textContent = "Sent \u2713";
             btn.className = "btn-reminder btn-reminder-sent";
+            btn.disabled = false;
+            setTimeout(function () {
+                btn.textContent = "Send Reminder";
+                btn.className = "btn-reminder";
+            }, 2000);
             if (lastRemindedSpan && result.last_reminded) {
-                lastRemindedSpan.textContent = "Last Reminded: " + formatReminderDate(result.last_reminded);
+                lastRemindedSpan.textContent = formatReminderDate(result.last_reminded);
                 lastRemindedSpan.title = new Date(result.last_reminded).toLocaleString();
             }
         } else {
