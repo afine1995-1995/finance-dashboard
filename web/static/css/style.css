@@ -275,6 +275,7 @@ main {
     max-height: 80vh;
     display: flex;
     flex-direction: column;
+    overflow-y: hidden;
 }
 
 .modal-title {
@@ -289,6 +290,7 @@ main {
 .invoice-table-container {
     overflow-y: auto;
     flex: 1;
+    min-height: 0;
 }
 
 .invoice-table {
