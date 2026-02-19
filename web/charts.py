@@ -566,12 +566,19 @@ def build_expected_revenue_chart() -> str:
         hovertemplate="<b>%{y}</b><br>Overdue: $%{x:,.0f}<extra></extra>",
     ))
 
-    # Summary annotations — y positions computed from chart_height so they always
-    # land within the top margin regardless of how tall the chart is.
+    # Size chart to show all clients — container CSS handles scrolling.
+    # Must be computed before the annotation y values below.
     t, b = 170, 70
+    chart_height = max(500, len(names) * 36 + t + b)
     plot_h = max(1, chart_height - t - b)
-    ann_label_y = 1.0 + (t - 75) / plot_h   # ~75px from figure top
-    ann_value_y = 1.0 + (t - 120) / plot_h  # ~120px from figure top
+
+    # Annotation y in plot-area paper coords (y>1 = above plot top, in top margin).
+    # Fix to pixel offsets so they stay visible regardless of chart height:
+    #   ann_label_y → ~75px from figure top
+    #   ann_value_y → ~120px from figure top
+    ann_label_y = 1.0 + (t - 75) / plot_h
+    ann_value_y = 1.0 + (t - 120) / plot_h
+    legend_y    = -(b - 20) / plot_h  # ~50px below plot area bottom
 
     fig.add_annotation(
         text="<b>Outstanding</b>",
@@ -615,19 +622,6 @@ def build_expected_revenue_chart() -> str:
         showarrow=False,
         font=dict(color=TEXT_COLOR, size=24),
     )
-
-    # Size chart to show all clients — container CSS handles scrolling
-    t, b = 170, 70
-    chart_height = max(500, len(names) * 36 + t + b)
-    plot_h = max(1, chart_height - t - b)
-
-    # Annotation y in plot-area paper coords (y>1 = above plot top, in top margin).
-    # Fix to pixel offsets so they stay visible regardless of chart height:
-    #   ann_label_y → ~75px from figure top
-    #   ann_value_y → ~120px from figure top
-    ann_label_y = 1.0 + (t - 75) / plot_h
-    ann_value_y = 1.0 + (t - 120) / plot_h
-    legend_y    = -(b - 20) / plot_h  # ~50px below plot area bottom
 
     fig.update_layout(
         barmode="stack",
