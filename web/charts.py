@@ -566,52 +566,68 @@ def build_expected_revenue_chart() -> str:
         hovertemplate="<b>%{y}</b><br>Overdue: $%{x:,.0f}<extra></extra>",
     ))
 
-    # Summary annotations at top
+    # Summary annotations — y positions computed from chart_height so they always
+    # land within the top margin regardless of how tall the chart is.
+    t, b = 170, 70
+    plot_h = max(1, chart_height - t - b)
+    ann_label_y = 1.0 + (t - 75) / plot_h   # ~75px from figure top
+    ann_value_y = 1.0 + (t - 120) / plot_h  # ~120px from figure top
+
     fig.add_annotation(
         text="<b>Outstanding</b>",
         xref="paper", yref="paper",
-        x=0.2, y=1.28,
+        x=0.2, y=ann_label_y,
         showarrow=False,
         font=dict(color=YELLOW, size=13),
     )
     fig.add_annotation(
         text=f"<b>${total_outstanding:,.0f}</b>",
         xref="paper", yref="paper",
-        x=0.2, y=1.17,
+        x=0.2, y=ann_value_y,
         showarrow=False,
         font=dict(color=YELLOW, size=24),
     )
     fig.add_annotation(
         text="<b>Overdue</b>",
         xref="paper", yref="paper",
-        x=0.5, y=1.28,
+        x=0.5, y=ann_label_y,
         showarrow=False,
         font=dict(color=RED, size=13),
     )
     fig.add_annotation(
         text=f"<b>${total_overdue:,.0f}</b>",
         xref="paper", yref="paper",
-        x=0.5, y=1.17,
+        x=0.5, y=ann_value_y,
         showarrow=False,
         font=dict(color=RED, size=24),
     )
     fig.add_annotation(
         text="<b>Total Owed</b>",
         xref="paper", yref="paper",
-        x=0.8, y=1.28,
+        x=0.8, y=ann_label_y,
         showarrow=False,
         font=dict(color=TEXT_COLOR, size=13),
     )
     fig.add_annotation(
         text=f"<b>${total_all:,.0f}</b>",
         xref="paper", yref="paper",
-        x=0.8, y=1.17,
+        x=0.8, y=ann_value_y,
         showarrow=False,
         font=dict(color=TEXT_COLOR, size=24),
     )
 
     # Size chart to show all clients — container CSS handles scrolling
-    chart_height = max(500, len(names) * 36 + 270)
+    t, b = 170, 70
+    chart_height = max(500, len(names) * 36 + t + b)
+    plot_h = max(1, chart_height - t - b)
+
+    # Annotation y in plot-area paper coords (y>1 = above plot top, in top margin).
+    # Fix to pixel offsets so they stay visible regardless of chart height:
+    #   ann_label_y → ~75px from figure top
+    #   ann_value_y → ~120px from figure top
+    ann_label_y = 1.0 + (t - 75) / plot_h
+    ann_value_y = 1.0 + (t - 120) / plot_h
+    legend_y    = -(b - 20) / plot_h  # ~50px below plot area bottom
 
     fig.update_layout(
         barmode="stack",
@@ -640,11 +656,11 @@ def build_expected_revenue_chart() -> str:
             bgcolor="rgba(0,0,0,0)",
             orientation="h",
             x=0.5, xanchor="center",
-            y=-0.12,
+            y=legend_y,
         ),
         paper_bgcolor=BG_COLOR,
         plot_bgcolor=BG_COLOR,
-        margin=dict(l=200, r=40, t=170, b=70),
+        margin=dict(l=200, r=40, t=t, b=b),
         height=chart_height,
         hoverlabel=dict(
             bgcolor="#2a2a4a",

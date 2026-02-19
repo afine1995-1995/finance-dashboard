@@ -211,6 +211,7 @@ main {
 .chart-fixed-tall {
     width: 100%;
     max-height: 620px;
+    overflow-x: hidden;
     overflow-y: auto;
 }
 
@@ -561,6 +562,7 @@ main {
 
     .chart-fixed-tall {
         max-height: 380px;
+        overflow-x: hidden;
         overflow-y: auto;
     }
 
@@ -692,6 +694,7 @@ main {
 
     .chart-fixed-tall {
         max-height: 300px;
+        overflow-x: hidden;
         overflow-y: auto;
     }
 }
