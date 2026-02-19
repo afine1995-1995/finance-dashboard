@@ -107,7 +107,7 @@ function isMobile() {
     return window.innerWidth <= 768;
 }
 
-function applyMobileLayout(fig) {
+function applyMobileLayout(fig, elementId) {
     if (!isMobile()) return;
 
     // --- Detect chart characteristics ---
@@ -200,8 +200,8 @@ function applyMobileLayout(fig) {
         fig.layout.margin = { l: 35, r: 8, t: hasTopAnnotations ? 50 : 30, b: 60 };
     }
 
-    // Cap explicit height for horizontal bar charts
-    if (fig.layout.height && hasHorizontalBars) {
+    // Cap explicit height for horizontal bar charts (skip scrollable charts)
+    if (fig.layout.height && hasHorizontalBars && elementId !== "expected-revenue-chart") {
         fig.layout.height = Math.min(fig.layout.height, 350);
     }
 
@@ -254,13 +254,13 @@ function applyMobileLayout(fig) {
     }
 }
 
-async function loadChart(url, elementId) {
+async function loadChart(url, elementId, opts = {}) {
     try {
         const resp = await fetch(url);
         const fig = await resp.json();
-        applyMobileLayout(fig);
+        applyMobileLayout(fig, elementId);
         Plotly.newPlot(elementId, fig.data, fig.layout, {
-            responsive: true,
+            responsive: opts.responsive !== false,
             displayModeBar: !isMobile()
         });
     } catch (err) {
@@ -295,7 +295,7 @@ function loadAll() {
     loadChart("/api/charts/spend-by-category", "spend-by-category-chart").then(attachSpendClickHandler);
     loadChart("/api/charts/revenue-by-client", "revenue-by-client-chart");
     loadChart("/api/charts/concentration-risk", "concentration-risk-chart");
-    loadChart("/api/charts/expected-revenue", "expected-revenue-chart").then(attachExpectedRevenueClickHandler);
+    loadChart("/api/charts/expected-revenue", "expected-revenue-chart", { responsive: false }).then(attachExpectedRevenueClickHandler);
     loadChart("/api/charts/days-to-pay", "days-to-pay-chart");
 }
 

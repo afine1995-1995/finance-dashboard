@@ -610,10 +610,8 @@ def build_expected_revenue_chart() -> str:
         font=dict(color=TEXT_COLOR, size=24),
     )
 
-    # Show 15 clients at a time, scroll for more
-    visible_count = min(15, len(names))
-    y_start = len(names) - visible_count - 0.5
-    y_end = len(names) - 0.5
+    # Size chart to show all clients — container CSS handles scrolling
+    chart_height = max(500, len(names) * 36 + 270)
 
     fig.update_layout(
         barmode="stack",
@@ -636,19 +634,18 @@ def build_expected_revenue_chart() -> str:
             tickfont=dict(color=TEXT_COLOR, size=11),
             gridcolor=GRID_COLOR,
             linecolor=GRID_COLOR,
-            range=[y_start, y_end],
         ),
         legend=dict(
             font=dict(color=TEXT_COLOR, size=12),
             bgcolor="rgba(0,0,0,0)",
             orientation="h",
             x=0.5, xanchor="center",
-            y=-0.18,
+            y=-0.12,
         ),
         paper_bgcolor=BG_COLOR,
         plot_bgcolor=BG_COLOR,
-        margin=dict(l=200, r=40, t=170, b=90),
-        height=580,
+        margin=dict(l=200, r=40, t=170, b=70),
+        height=chart_height,
         hoverlabel=dict(
             bgcolor="#2a2a4a",
             font_color=TEXT_COLOR,

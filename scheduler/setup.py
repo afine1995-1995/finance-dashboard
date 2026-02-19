@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -13,13 +14,15 @@ logger = logging.getLogger(__name__)
 def create_scheduler() -> BackgroundScheduler:
     scheduler = BackgroundScheduler()
 
-    # Data sync — daily at 6 AM
+    # Data sync — every 30 minutes so charts stay current throughout the day.
+    # next_run_time=now() fires immediately on startup instead of waiting 30 min.
     scheduler.add_job(
         sync_all_data,
-        trigger=CronTrigger(hour=6, minute=0),
+        trigger=IntervalTrigger(minutes=30),
         id="sync_all_data",
         name="Sync Mercury + Stripe data",
         replace_existing=True,
+        next_run_time=datetime.now(timezone.utc),
     )
 
     # Late payment check — daily at configured hour

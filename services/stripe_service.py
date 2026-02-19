@@ -117,8 +117,8 @@ def sync_subscriptions():
                 "status": sub.status,
                 "monthly_amount": round(monthly_amount, 2),
                 "currency": sub.currency,
-                "current_period_start": _ts_to_datestr(sub.current_period_start),
-                "current_period_end": _ts_to_datestr(sub.current_period_end),
+                "current_period_start": _ts_to_datestr(getattr(sub, "current_period_start", None)),
+                "current_period_end": _ts_to_datestr(getattr(sub, "current_period_end", None)),
             })
             count += 1
 
