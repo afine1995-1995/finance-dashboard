@@ -735,10 +735,29 @@ def upsert_notify_email(invoice_id: str, email: str):
     conn.close()
 
 
+# Manually verified invoiced totals by month. These override auto-calculated
+# values for the given months. Months not listed fall back to auto-calculation.
+MANUAL_INVOICED_OVERRIDES = {
+    "2025-04": 217850,
+    "2025-05": 224625,
+    "2025-06": 240300,
+    "2025-07": 280200,
+    "2025-08": 280200,
+    "2025-09": 311300,
+    "2025-10": 370800,
+    "2025-11": 353000,
+    "2025-12": 417500,
+    "2026-01": 407972,
+    "2026-02": 421500,
+    "2026-03": 460472,
+}
+
+
 def get_monthly_invoiced():
     """Return monthly invoiced totals as {month: amount}.
 
-    Combines two sources without double-counting:
+    Uses MANUAL_INVOICED_OVERRIDES for months where the auto-calculation is
+    known to be inaccurate. Remaining months are auto-calculated by combining:
     1. Stripe invoices: sum of amount_due grouped by created_at month (non-void).
     2. Mercury direct payers: monthly inflows from counterparties that are NOT
        already covered by Stripe invoices (fuzzy name-matched to deduplicate).
@@ -816,9 +835,12 @@ def get_monthly_invoiced():
         mercury_direct_by_month[month] = mercury_direct_by_month.get(month, 0) + r["total"]
 
     # 5. Merge: Stripe invoiced + Mercury direct payer inflows
-    all_months = set(stripe_by_month) | set(mercury_direct_by_month)
-    return {m: stripe_by_month.get(m, 0) + mercury_direct_by_month.get(m, 0)
-            for m in all_months}
+    all_months = set(stripe_by_month) | set(mercury_direct_by_month) | set(MANUAL_INVOICED_OVERRIDES)
+    result = {m: stripe_by_month.get(m, 0) + mercury_direct_by_month.get(m, 0)
+              for m in all_months}
+    # Apply manual overrides — these take precedence over auto-calculated values
+    result.update(MANUAL_INVOICED_OVERRIDES)
+    return result
 
 
 def get_invoiced_breakdown(month: str):
