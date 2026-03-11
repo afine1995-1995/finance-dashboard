@@ -272,7 +272,7 @@ async function loadChart(url, elementId, opts = {}) {
 
 let _arrCollected = 0;
 let _arrInvoiced = 0;
-let _arrUseInvoiced = false;
+let _arrUseInvoiced = true;  // default: show invoiced ARR
 
 async function loadBalances() {
     try {
@@ -302,9 +302,9 @@ function toggleArrMode() {
     if (_arrUseInvoiced) {
         document.getElementById("kpi-arr").textContent = fmtWhole(_arrInvoiced);
         label.innerHTML = 'Run Rate ARR <span style="font-size:11px;color:#f39c12;">(Invoiced)</span>';
-        btn.textContent = "◉ Using Invoiced ARR";
-        btn.classList.remove("btn-chart-toggle-off");
-        btn.classList.add("btn-chart-toggle-on");
+        btn.textContent = "○ Use Collected ARR";
+        btn.classList.remove("btn-chart-toggle-on");
+        btn.classList.add("btn-chart-toggle-off");
     } else {
         document.getElementById("kpi-arr").textContent = fmtWhole(_arrCollected);
         label.innerHTML = 'Run Rate ARR <span style="font-size:11px;color:#888;">(Collected)</span>';
