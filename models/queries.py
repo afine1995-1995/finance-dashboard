@@ -270,8 +270,9 @@ def get_all_late_invoices():
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     conn = get_connection()
     rows = conn.execute(
-        """SELECT si.*
+        """SELECT si.*, lpn.notify_email
            FROM stripe_invoices si
+           LEFT JOIN late_payment_notifications lpn ON si.id = lpn.invoice_id
            WHERE si.status = 'open'
              AND si.due_date < ?
              AND si.amount_due > 0
@@ -690,7 +691,8 @@ def get_open_invoices_for_client(customer_name: str):
         """SELECT si.id, si.number, si.customer_email, si.amount_due,
                   si.due_date, si.hosted_invoice_url,
                   COALESCE(lpn.email_sent, 0) AS email_sent,
-                  lpn.email_sent_at
+                  lpn.email_sent_at,
+                  lpn.notify_email
            FROM stripe_invoices si
            LEFT JOIN late_payment_notifications lpn ON si.id = lpn.invoice_id
            WHERE si.status = 'open'
@@ -701,6 +703,20 @@ def get_open_invoices_for_client(customer_name: str):
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def upsert_notify_email(invoice_id: str, email: str):
+    """Set or update the notification email override for an invoice."""
+    now = datetime.now(timezone.utc).isoformat()
+    conn = get_connection()
+    conn.execute(
+        """INSERT INTO late_payment_notifications (invoice_id, notified_at, notify_email)
+           VALUES (?, ?, ?)
+           ON CONFLICT(invoice_id) DO UPDATE SET notify_email = excluded.notify_email""",
+        (invoice_id, now, email),
+    )
+    conn.commit()
+    conn.close()
 
 
 def get_open_invoices_by_client():

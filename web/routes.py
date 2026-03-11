@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, Response, jsonify, render_template, request
 
-from models.queries import get_open_invoices_for_client, get_all_late_invoices, mark_email_sent
+from models.queries import get_open_invoices_for_client, get_all_late_invoices, mark_email_sent, upsert_notify_email
 from services.email_service import send_reminder_email
 from services.stripe_service import get_fresh_invoice, get_balance as get_stripe_balance
 from services.mercury_service import get_total_balance as get_mercury_balance
@@ -194,6 +194,16 @@ def api_sync():
         return jsonify({"error": str(e)}), 500
 
 
+@bp.route("/api/invoices/<invoice_id>/notify-email", methods=["PUT"])
+def api_update_notify_email(invoice_id):
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip()
+    if not email:
+        return jsonify({"error": "email required"}), 400
+    upsert_notify_email(invoice_id, email)
+    return jsonify({"success": True, "email": email})
+
+
 @bp.route("/api/invoices/send-reminder", methods=["POST"])
 def api_send_reminder():
     data = request.get_json(silent=True) or {}
@@ -205,14 +215,15 @@ def api_send_reminder():
     if not invoice:
         return jsonify({"error": f"Could not fetch invoice {invoice_id} from Stripe"}), 404
 
-    customer_email = invoice.get("customer_email")
-    if not customer_email:
+    # Use notify_email override if set, otherwise fall back to Stripe customer email
+    notify_email = data.get("notify_email") or invoice.get("customer_email")
+    if not notify_email:
         return jsonify({"error": "No email address on file for this customer"}), 400
 
     try:
-        send_reminder_email(customer_email, invoice)
+        send_reminder_email(notify_email, invoice)
         sent_at = mark_email_sent(invoice_id)
-        return jsonify({"success": True, "email": customer_email, "last_reminded": sent_at})
+        return jsonify({"success": True, "email": notify_email, "last_reminded": sent_at})
     except Exception as e:
         logger.error(f"Email send failed for {invoice_id}: {e}")
         return jsonify({"error": f"Failed to send email: {e}"}), 500
@@ -237,17 +248,17 @@ def api_remind_all_overdue():
             results.append({"id": invoice_id, "status": "skipped", "reason": "Could not fetch from Stripe"})
             continue
 
-        customer_email = invoice.get("customer_email")
-        if not customer_email:
+        notify_email = inv.get("notify_email") or invoice.get("customer_email")
+        if not notify_email:
             skipped += 1
             results.append({"id": invoice_id, "status": "skipped", "reason": "No email on file", "customer": invoice.get("customer_name", "Unknown")})
             continue
 
         try:
-            send_reminder_email(customer_email, invoice)
+            send_reminder_email(notify_email, invoice)
             mark_email_sent(invoice_id)
             sent += 1
-            results.append({"id": invoice_id, "status": "sent", "email": customer_email, "customer": invoice.get("customer_name", "Unknown")})
+            results.append({"id": invoice_id, "status": "sent", "email": notify_email, "customer": invoice.get("customer_name", "Unknown")})
         except Exception as e:
             failed += 1
             results.append({"id": invoice_id, "status": "failed", "reason": str(e), "customer": invoice.get("customer_name", "Unknown")})

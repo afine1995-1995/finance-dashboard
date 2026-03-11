@@ -23,4 +23,9 @@ def init_db():
         conn.execute("ALTER TABLE stripe_invoices ADD COLUMN paid_at TEXT")
     except sqlite3.OperationalError:
         pass  # column already exists
+    # Add notify_email column if missing (migration for existing DBs)
+    try:
+        conn.execute("ALTER TABLE late_payment_notifications ADD COLUMN notify_email TEXT")
+    except sqlite3.OperationalError:
+        pass  # column already exists
     conn.close()

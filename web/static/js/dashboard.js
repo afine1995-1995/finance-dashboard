@@ -360,7 +360,7 @@ function formatCurrency(amount) {
 async function loadInvoicesForClient(client) {
     document.getElementById("invoice-modal-title").textContent = "Open Invoices — " + client;
     const tbody = document.getElementById("invoice-table-body");
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#888;">Loading...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#888;">Loading...</td></tr>';
     showInvoiceModal();
 
     try {
@@ -368,7 +368,7 @@ async function loadInvoicesForClient(client) {
         const invoices = await resp.json();
 
         if (!invoices.length) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#888;">No open invoices found.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#888;">No open invoices found.</td></tr>';
             return;
         }
 
@@ -415,20 +415,7 @@ async function loadInvoicesForClient(client) {
             tdStatus.appendChild(badge);
             tr.appendChild(tdStatus);
 
-            // Action
-            const tdAction = document.createElement("td");
-            if (inv.is_overdue) {
-                const btn = document.createElement("button");
-                btn.textContent = "Send Reminder";
-                btn.className = "btn-reminder";
-                btn.addEventListener("click", function () {
-                    sendReminder(btn, inv.id, tdLastReminded);
-                });
-                tdAction.appendChild(btn);
-            }
-            tr.appendChild(tdAction);
-
-            // Last Reminded
+            // Last Reminded (declared early so the button closure can reference it)
             const tdLastReminded = document.createElement("td");
             tdLastReminded.className = "last-reminded";
             if (inv.last_reminded) {
@@ -437,13 +424,45 @@ async function loadInvoicesForClient(client) {
             } else {
                 tdLastReminded.textContent = "Never";
             }
+
+            // Notify Email (inline editable)
+            const tdNotifyEmail = document.createElement("td");
+            tdNotifyEmail.className = "notify-email-cell";
+            const currentNotifyEmail = inv.notify_email || inv.customer_email || "";
+            const emailInput = document.createElement("input");
+            emailInput.type = "email";
+            emailInput.value = currentNotifyEmail;
+            emailInput.className = "notify-email-input";
+            emailInput.title = "Email that will receive reminders";
+            emailInput.addEventListener("change", function () {
+                saveNotifyEmail(inv.id, emailInput);
+            });
+            emailInput.addEventListener("keydown", function (e) {
+                if (e.key === "Enter") emailInput.blur();
+            });
+            tdNotifyEmail.appendChild(emailInput);
+
+            // Action
+            const tdAction = document.createElement("td");
+            if (inv.is_overdue) {
+                const btn = document.createElement("button");
+                btn.textContent = "Send Reminder";
+                btn.className = "btn-reminder";
+                btn.addEventListener("click", function () {
+                    sendReminder(btn, inv.id, emailInput, tdLastReminded);
+                });
+                tdAction.appendChild(btn);
+            }
+
+            tr.appendChild(tdNotifyEmail);
+            tr.appendChild(tdAction);
             tr.appendChild(tdLastReminded);
 
             tbody.appendChild(tr);
         });
     } catch (err) {
         console.error("Failed to load invoices:", err);
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#e74c3c;">Failed to load invoices.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#e74c3c;">Failed to load invoices.</td></tr>';
     }
 }
 
@@ -455,16 +474,39 @@ function formatReminderDate(isoString) {
     return month + " " + day + ", " + year;
 }
 
-async function sendReminder(btn, invoiceId, lastRemindedSpan) {
+async function saveNotifyEmail(invoiceId, emailInput) {
+    const email = emailInput.value.trim();
+    if (!email) return;
+    const orig = emailInput.dataset.savedValue || emailInput.defaultValue;
+    emailInput.dataset.savedValue = email;
+    try {
+        const resp = await fetch("/api/invoices/" + encodeURIComponent(invoiceId) + "/notify-email", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email }),
+        });
+        if (!resp.ok) {
+            emailInput.value = orig;
+            emailInput.dataset.savedValue = orig;
+        }
+    } catch (err) {
+        console.error("Failed to save notify email:", err);
+        emailInput.value = orig;
+        emailInput.dataset.savedValue = orig;
+    }
+}
+
+async function sendReminder(btn, invoiceId, emailInput, lastRemindedSpan) {
     btn.disabled = true;
     btn.textContent = "Sending...";
     btn.className = "btn-reminder btn-reminder-sending";
+    const notifyEmail = emailInput ? emailInput.value.trim() : null;
 
     try {
         const resp = await fetch("/api/invoices/send-reminder", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ invoice_id: invoiceId }),
+            body: JSON.stringify({ invoice_id: invoiceId, notify_email: notifyEmail || undefined }),
         });
         const result = await resp.json();
 

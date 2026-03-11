@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS late_payment_notifications (
     notified_at TEXT NOT NULL,
     email_sent INTEGER NOT NULL DEFAULT 0,
     email_sent_at TEXT,
+    notify_email TEXT,
     UNIQUE(invoice_id)
 );
 

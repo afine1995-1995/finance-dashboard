@@ -404,6 +404,29 @@ main {
     white-space: nowrap;
 }
 
+.notify-email-input {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: #ccc;
+    font-size: 12px;
+    padding: 3px 6px;
+    width: 200px;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.notify-email-input:hover {
+    border-color: #4a4a5a;
+    background: #1e1e2e;
+}
+
+.notify-email-input:focus {
+    border-color: #5dade2;
+    background: #1e1e2e;
+    outline: none;
+    color: #fff;
+}
+
 /* Remind All Overdue button */
 .btn-remind-all {
     position: absolute;
