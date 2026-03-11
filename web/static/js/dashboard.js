@@ -797,8 +797,8 @@ function toggleTotalInvoiced() {
     const btn = document.getElementById("invoiced-toggle-btn");
     invoicedTraceVisible = !invoicedTraceVisible;
     Plotly.restyle("in-vs-out-chart", { visible: invoicedTraceVisible }, [0]);
-    // Money In labels: show when invoiced is ON, plain line when invoiced is OFF
-    const moneyInMode = invoicedTraceVisible ? "lines+markers+text" : "lines+markers";
+    // Money In labels: show when invoiced is OFF, plain line when invoiced is ON
+    const moneyInMode = invoicedTraceVisible ? "lines+markers" : "lines+markers+text";
     Plotly.restyle("in-vs-out-chart", { mode: moneyInMode }, [1]);
     if (invoicedTraceVisible) {
         btn.textContent = "◉ Total Invoiced";

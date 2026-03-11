@@ -66,11 +66,11 @@ def build_in_vs_out_chart() -> str:
         line=dict(color=INVOICED_COLOR, width=4, dash="dot"),
         marker=dict(size=10, color=INVOICED_COLOR),
     ))
-    # Trace 1: Money In — starts visible with dollar labels on each point
+    # Trace 1: Money In — starts without labels (invoiced toggle is ON by default)
     fig.add_trace(go.Scatter(
         x=months,
         y=inflows,
-        mode="lines+markers+text",
+        mode="lines+markers",
         name="Money In",
         text=[f"${v:,.0f}" if v else "" for v in inflows],
         textposition="top center",

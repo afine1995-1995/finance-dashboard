@@ -34,8 +34,8 @@ def sync_invoices():
             customer_email = None
             # Prefer current customer object data over frozen invoice fields
             if not isinstance(invoice.customer, str) and invoice.customer:
-                customer_name = invoice.customer.name or invoice.customer_name or None
-                customer_email = invoice.customer.email or invoice.customer_email or None
+                customer_name = getattr(invoice.customer, "name", None) or invoice.customer_name or None
+                customer_email = getattr(invoice.customer, "email", None) or invoice.customer_email or None
             else:
                 if invoice.customer_name:
                     customer_name = invoice.customer_name
