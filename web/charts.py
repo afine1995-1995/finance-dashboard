@@ -251,7 +251,7 @@ def build_profit_margin_chart(use_invoiced: bool = False) -> str:
                 align="center",
             )
 
-    title_text = "Net Profit Margin by Month (Invoiced)" if use_invoiced else "Net Profit Margin by Month"
+    title_text = "Net Profit Margin by Month (Invoiced)" if use_invoiced else "Net Profit Margin by Month (Cash Collected)"
     fig.update_layout(
         title=dict(
             text=title_text,
