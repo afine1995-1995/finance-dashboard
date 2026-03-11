@@ -66,24 +66,24 @@ def build_in_vs_out_chart() -> str:
         line=dict(color=INVOICED_COLOR, width=4, dash="dot"),
         marker=dict(size=10, color=INVOICED_COLOR),
     ))
-    # Trace 1: Money In — starts without labels (invoiced toggle is ON by default)
+    # Trace 1: Total Collected — starts without labels (invoiced toggle is ON by default)
     fig.add_trace(go.Scatter(
         x=months,
         y=inflows,
         mode="lines+markers",
-        name="Money In",
+        name="Total Collected",
         text=[f"${v:,.0f}" if v else "" for v in inflows],
         textposition="top center",
         textfont=dict(color=GREEN, size=11),
         line=dict(color=GREEN, width=4),
         marker=dict(size=10, color=GREEN),
     ))
-    # Trace 2: Money Out
+    # Trace 2: Total Expenses
     fig.add_trace(go.Scatter(
         x=months,
         y=outflows,
         mode="lines+markers",
-        name="Money Out",
+        name="Total Expenses",
         line=dict(color=RED, width=4),
         marker=dict(size=10, color=RED),
     ))
@@ -101,8 +101,8 @@ def build_in_vs_out_chart() -> str:
     # 4 metrics, slightly compressed spacing to fit all on the right panel
     summary_metrics = [
         {"label": "Total Invoiced",      "values": invoiced,      "color": INVOICED_COLOR},
-        {"label": "Money In",            "values": inflows,       "color": GREEN},
-        {"label": "Money Out",           "values": outflows,      "color": RED},
+        {"label": "Total Collected",      "values": inflows,       "color": GREEN},
+        {"label": "Total Expenses",      "values": outflows,      "color": RED},
         {"label": "Owner Distributions", "values": distributions, "color": BLUE},
     ]
     periods = [
@@ -133,7 +133,7 @@ def build_in_vs_out_chart() -> str:
 
     fig.update_layout(
         title=dict(
-            text="Money In vs Money Out by Month",
+            text="Total Collected vs Total Expenses by Month",
             font=dict(size=22, color=TEXT_COLOR),
             x=0.45,
         ),
