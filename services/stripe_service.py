@@ -52,7 +52,7 @@ def sync_invoices():
             upsert_stripe_invoice({
                 "id": invoice.id,
                 "number": invoice.number,
-                "customer_id": invoice.customer if isinstance(invoice.customer, str) else None,
+                "customer_id": invoice.customer if isinstance(invoice.customer, str) else getattr(invoice.customer, "id", None),
                 "customer_name": customer_name,
                 "customer_email": customer_email,
                 "amount_due": invoice.amount_due / 100.0,
