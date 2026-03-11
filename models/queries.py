@@ -843,6 +843,15 @@ def get_monthly_invoiced():
     return result
 
 
+def get_last_month_invoiced():
+    """Return the most recent month's total invoiced amount (for invoiced ARR)."""
+    invoiced = get_monthly_invoiced()
+    if not invoiced:
+        return 0
+    latest_month = max(invoiced.keys())
+    return invoiced[latest_month]
+
+
 def get_invoiced_breakdown(month: str):
     """Return detailed per-invoice breakdown of invoiced amounts for a given month (YYYY-MM)."""
     conn = get_connection()

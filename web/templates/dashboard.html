@@ -30,8 +30,9 @@
             </svg>
         </div>
         <div class="kpi-info">
-            <div class="kpi-label">Run Rate ARR</div>
+            <div class="kpi-label" id="kpi-arr-label">Run Rate ARR <span style="font-size:11px;color:#888;">(Collected)</span></div>
             <div class="kpi-value" id="kpi-arr">—</div>
+            <button class="btn-arr-toggle btn-chart-toggle-off" id="arr-mode-btn" onclick="event.stopPropagation(); toggleArrMode();">○ Use Invoiced ARR</button>
         </div>
     </div>
     <div class="kpi-card">
@@ -208,5 +209,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('web.static', filename='js/dashboard.js') }}?v=9"></script>
+<script src="{{ url_for('web.static', filename='js/dashboard.js') }}?v=11"></script>
 {% endblock %}

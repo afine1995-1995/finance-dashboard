@@ -270,6 +270,10 @@ async function loadChart(url, elementId, opts = {}) {
     }
 }
 
+let _arrCollected = 0;
+let _arrInvoiced = 0;
+let _arrUseInvoiced = false;
+
 async function loadBalances() {
     try {
         const resp = await fetch("/api/balances");
@@ -279,12 +283,34 @@ async function loadBalances() {
         const stripeTotal = Number(data.stripe_available) + Number(data.stripe_pending);
         document.getElementById("kpi-stripe").textContent = fmt(stripeTotal);
         const fmtWhole = (n) => "$" + Math.round(Number(n)).toLocaleString("en-US");
-        document.getElementById("kpi-arr").textContent = fmtWhole(data.run_rate_arr);
+        _arrCollected = data.run_rate_arr;
+        _arrInvoiced = data.invoiced_arr;
+        document.getElementById("kpi-arr").textContent = fmtWhole(_arrUseInvoiced ? _arrInvoiced : _arrCollected);
         document.getElementById("kpi-ytd").textContent = fmtWhole(data.ytd_collected);
         document.getElementById("kpi-distributions").textContent = fmtWhole(data.ytd_distributions);
         document.getElementById("kpi-outflows").textContent = fmtWhole(data.ytd_outflows);
     } catch (err) {
         console.error("Failed to load balances:", err);
+    }
+}
+
+function toggleArrMode() {
+    _arrUseInvoiced = !_arrUseInvoiced;
+    const btn = document.getElementById("arr-mode-btn");
+    const label = document.getElementById("kpi-arr-label");
+    const fmtWhole = (n) => "$" + Math.round(Number(n)).toLocaleString("en-US");
+    if (_arrUseInvoiced) {
+        document.getElementById("kpi-arr").textContent = fmtWhole(_arrInvoiced);
+        label.innerHTML = 'Run Rate ARR <span style="font-size:11px;color:#f39c12;">(Invoiced)</span>';
+        btn.textContent = "◉ Using Invoiced ARR";
+        btn.classList.remove("btn-chart-toggle-off");
+        btn.classList.add("btn-chart-toggle-on");
+    } else {
+        document.getElementById("kpi-arr").textContent = fmtWhole(_arrCollected);
+        label.innerHTML = 'Run Rate ARR <span style="font-size:11px;color:#888;">(Collected)</span>';
+        btn.textContent = "○ Use Invoiced ARR";
+        btn.classList.remove("btn-chart-toggle-on");
+        btn.classList.add("btn-chart-toggle-off");
     }
 }
 
@@ -771,6 +797,9 @@ function toggleTotalInvoiced() {
     const btn = document.getElementById("invoiced-toggle-btn");
     invoicedTraceVisible = !invoicedTraceVisible;
     Plotly.restyle("in-vs-out-chart", { visible: invoicedTraceVisible }, [0]);
+    // Money In labels: show when invoiced is ON, plain line when invoiced is OFF
+    const moneyInMode = invoicedTraceVisible ? "lines+markers+text" : "lines+markers";
+    Plotly.restyle("in-vs-out-chart", { mode: moneyInMode }, [1]);
     if (invoicedTraceVisible) {
         btn.textContent = "◉ Total Invoiced";
         btn.classList.remove("btn-chart-toggle-off");

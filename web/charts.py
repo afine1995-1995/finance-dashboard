@@ -51,33 +51,34 @@ def build_in_vs_out_chart() -> str:
     distributions = [distributions_by_month.get(m, 0) for m in months]
     invoiced = [invoiced_by_month.get(m, 0) for m in months]
 
-    # Calculate net (money in minus money out, not including distributions)
-    net = [i - o for i, o in zip(inflows, outflows)]
-    label_y = [max(i, o, d, inv) for i, o, d, inv in zip(inflows, outflows, distributions, invoiced)]
-    label_text = []
-    for n in net:
-        sign = "+" if n >= 0 else "-"
-        label_text.append(f"{sign}${abs(n):,.0f}")
-
     INVOICED_COLOR = "#f39c12"
 
     fig = go.Figure()
+    # Trace 0: Total Invoiced — starts visible with dollar labels on each point
     fig.add_trace(go.Scatter(
         x=months,
         y=invoiced,
-        mode="lines+markers",
+        mode="lines+markers+text",
         name="Total Invoiced",
+        text=[f"${v:,.0f}" if v else "" for v in invoiced],
+        textposition="top center",
+        textfont=dict(color=INVOICED_COLOR, size=11),
         line=dict(color=INVOICED_COLOR, width=4, dash="dot"),
         marker=dict(size=10, color=INVOICED_COLOR),
     ))
+    # Trace 1: Money In — starts visible with dollar labels on each point
     fig.add_trace(go.Scatter(
         x=months,
         y=inflows,
-        mode="lines+markers",
+        mode="lines+markers+text",
         name="Money In",
+        text=[f"${v:,.0f}" if v else "" for v in inflows],
+        textposition="top center",
+        textfont=dict(color=GREEN, size=11),
         line=dict(color=GREEN, width=4),
         marker=dict(size=10, color=GREEN),
     ))
+    # Trace 2: Money Out
     fig.add_trace(go.Scatter(
         x=months,
         y=outflows,
@@ -86,6 +87,7 @@ def build_in_vs_out_chart() -> str:
         line=dict(color=RED, width=4),
         marker=dict(size=10, color=RED),
     ))
+    # Trace 3: Owner Distributions
     fig.add_trace(go.Scatter(
         x=months,
         y=distributions,
@@ -93,17 +95,6 @@ def build_in_vs_out_chart() -> str:
         name="Owner Distributions",
         line=dict(color=BLUE, width=4),
         marker=dict(size=10, color=BLUE),
-    ))
-    # Net labels above each month
-    fig.add_trace(go.Scatter(
-        x=months,
-        y=label_y,
-        mode="text",
-        text=label_text,
-        textposition="top center",
-        textfont=dict(size=12, color=[GREEN if n >= 0 else RED for n in net]),
-        showlegend=False,
-        hoverinfo="skip",
     ))
 
     # Right-side summary: 12-mo, 6-mo, 3-mo totals for each line

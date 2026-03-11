@@ -524,6 +524,30 @@ main {
     color: #888;
 }
 
+.btn-arr-toggle {
+    margin-top: 6px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid #4a4a6a;
+    background: transparent;
+    color: #888;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    display: inline-block;
+}
+
+.btn-arr-toggle:hover {
+    border-color: #7a7aaa;
+    color: #d0d0e8;
+}
+
+.btn-arr-toggle.btn-chart-toggle-on {
+    border-color: #f39c12;
+    color: #f39c12;
+}
+
 /* Invoiced breakdown modal content */
 .invoiced-breakdown-total {
     font-size: 18px;
