@@ -47,6 +47,11 @@ CREATE TABLE IF NOT EXISTS late_payment_notifications (
     UNIQUE(invoice_id)
 );
 
+CREATE TABLE IF NOT EXISTS disregarded_invoices (
+    invoice_id TEXT PRIMARY KEY,
+    disregarded_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS sync_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     source TEXT NOT NULL,

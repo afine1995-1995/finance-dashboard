@@ -74,10 +74,20 @@
     </div>
 </div>
 
-<div class="chart-container">
+<div class="chart-container" style="position:relative;">
+    <div class="chart-toggle-row">
+        <button id="invoiced-toggle-btn" class="btn-chart-toggle btn-chart-toggle-on" onclick="toggleTotalInvoiced()">
+            ◉ Total Invoiced
+        </button>
+    </div>
     <div id="in-vs-out-chart" class="chart"></div>
 </div>
 <div class="chart-container">
+    <div class="chart-toggle-row">
+        <button id="margin-mode-btn" class="btn-chart-toggle btn-chart-toggle-off" onclick="toggleMarginMode()">
+            ○ Use Invoiced Margin
+        </button>
+    </div>
     <div id="profit-margin-chart" class="chart-medium"></div>
 </div>
 <div class="chart-container">
@@ -162,6 +172,15 @@
     </div>
 </div>
 
+<!-- Invoiced breakdown modal -->
+<div id="invoiced-breakdown-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content modal-content-wide">
+        <button class="modal-close" id="invoiced-modal-close-btn">&times;</button>
+        <h2 id="invoiced-modal-title" class="modal-title">Invoiced Breakdown</h2>
+        <div id="invoiced-breakdown-content"></div>
+    </div>
+</div>
+
 <!-- Invoice detail drill-down modal -->
 <div id="invoice-detail-modal" class="modal-overlay" style="display:none;">
     <div class="modal-content modal-content-wide">
@@ -175,9 +194,10 @@
                         <th>Amount Due</th>
                         <th>Due Date</th>
                         <th>Status</th>
-                        <th>Action</th>
                         <th>Notify Email</th>
                         <th>Last Reminded</th>
+                        <th>Action</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody id="invoice-table-body"></tbody>
@@ -188,5 +208,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('web.static', filename='js/dashboard.js') }}?v=8"></script>
+<script src="{{ url_for('web.static', filename='js/dashboard.js') }}?v=9"></script>
 {% endblock %}

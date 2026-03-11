@@ -290,7 +290,7 @@ async function loadBalances() {
 
 function loadAll() {
     loadBalances();
-    loadChart("/api/charts/in-vs-out", "in-vs-out-chart");
+    loadChart("/api/charts/in-vs-out", "in-vs-out-chart").then(attachInVsOutClickHandler);
     loadChart("/api/charts/profit-margin", "profit-margin-chart").then(attachMarginClickHandler);
     loadChart("/api/charts/spend-by-category", "spend-by-category-chart").then(attachSpendClickHandler);
     loadChart("/api/charts/revenue-by-client", "revenue-by-client-chart");
@@ -360,7 +360,7 @@ function formatCurrency(amount) {
 async function loadInvoicesForClient(client) {
     document.getElementById("invoice-modal-title").textContent = "Open Invoices — " + client;
     const tbody = document.getElementById("invoice-table-body");
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#888;">Loading...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#888;">Loading...</td></tr>';
     showInvoiceModal();
 
     try {
@@ -368,7 +368,7 @@ async function loadInvoicesForClient(client) {
         const invoices = await resp.json();
 
         if (!invoices.length) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#888;">No open invoices found.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#888;">No open invoices found.</td></tr>';
             return;
         }
 
@@ -399,7 +399,14 @@ async function loadInvoicesForClient(client) {
 
             // Due date
             const tdDue = document.createElement("td");
-            tdDue.textContent = inv.due_date || "—";
+            if (inv.due_date) {
+                const [y, mo, d] = inv.due_date.split("-");
+                tdDue.textContent = new Date(Number(y), Number(mo) - 1, Number(d))
+                    .toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+            } else {
+                tdDue.textContent = "Not set";
+                tdDue.style.color = "#888";
+            }
             tr.appendChild(tdDue);
 
             // Status badge
@@ -415,7 +422,29 @@ async function loadInvoicesForClient(client) {
             tdStatus.appendChild(badge);
             tr.appendChild(tdStatus);
 
-            // Last Reminded (declared early so the button closure can reference it)
+            // Notify Email with Save button
+            const tdNotifyEmail = document.createElement("td");
+            tdNotifyEmail.className = "notify-email-cell";
+            const currentNotifyEmail = inv.notify_email || inv.customer_email || "";
+            const emailInput = document.createElement("input");
+            emailInput.type = "email";
+            emailInput.value = currentNotifyEmail;
+            emailInput.dataset.savedValue = currentNotifyEmail;
+            emailInput.className = "notify-email-input";
+            emailInput.placeholder = "Notification email";
+            emailInput.addEventListener("keydown", function (e) {
+                if (e.key === "Enter") saveBtn.click();
+            });
+            const saveBtn = document.createElement("button");
+            saveBtn.textContent = "Save";
+            saveBtn.className = "btn-save-email";
+            saveBtn.addEventListener("click", function () {
+                saveNotifyEmail(inv.id, emailInput, saveBtn);
+            });
+            tdNotifyEmail.appendChild(emailInput);
+            tdNotifyEmail.appendChild(saveBtn);
+
+            // Last Reminded
             const tdLastReminded = document.createElement("td");
             tdLastReminded.className = "last-reminded";
             if (inv.last_reminded) {
@@ -425,24 +454,7 @@ async function loadInvoicesForClient(client) {
                 tdLastReminded.textContent = "Never";
             }
 
-            // Notify Email (inline editable)
-            const tdNotifyEmail = document.createElement("td");
-            tdNotifyEmail.className = "notify-email-cell";
-            const currentNotifyEmail = inv.notify_email || inv.customer_email || "";
-            const emailInput = document.createElement("input");
-            emailInput.type = "email";
-            emailInput.value = currentNotifyEmail;
-            emailInput.className = "notify-email-input";
-            emailInput.title = "Email that will receive reminders";
-            emailInput.addEventListener("change", function () {
-                saveNotifyEmail(inv.id, emailInput);
-            });
-            emailInput.addEventListener("keydown", function (e) {
-                if (e.key === "Enter") emailInput.blur();
-            });
-            tdNotifyEmail.appendChild(emailInput);
-
-            // Action
+            // Action (Send Reminder)
             const tdAction = document.createElement("td");
             if (inv.is_overdue) {
                 const btn = document.createElement("button");
@@ -454,15 +466,27 @@ async function loadInvoicesForClient(client) {
                 tdAction.appendChild(btn);
             }
 
+            // Disregard
+            const tdDisregard = document.createElement("td");
+            const disBtn = document.createElement("button");
+            disBtn.textContent = "Disregard";
+            disBtn.className = "btn-disregard";
+            disBtn.title = "Remove this invoice from the dashboard (e.g. paid by check)";
+            disBtn.addEventListener("click", function () {
+                disregardInvoice(inv.id, tr, disBtn);
+            });
+            tdDisregard.appendChild(disBtn);
+
             tr.appendChild(tdNotifyEmail);
-            tr.appendChild(tdAction);
             tr.appendChild(tdLastReminded);
+            tr.appendChild(tdAction);
+            tr.appendChild(tdDisregard);
 
             tbody.appendChild(tr);
         });
     } catch (err) {
         console.error("Failed to load invoices:", err);
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#e74c3c;">Failed to load invoices.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#e74c3c;">Failed to load invoices.</td></tr>';
     }
 }
 
@@ -474,25 +498,59 @@ function formatReminderDate(isoString) {
     return month + " " + day + ", " + year;
 }
 
-async function saveNotifyEmail(invoiceId, emailInput) {
+async function saveNotifyEmail(invoiceId, emailInput, saveBtn) {
     const email = emailInput.value.trim();
     if (!email) return;
-    const orig = emailInput.dataset.savedValue || emailInput.defaultValue;
-    emailInput.dataset.savedValue = email;
+    const orig = emailInput.dataset.savedValue || "";
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = "Saving..."; }
     try {
         const resp = await fetch("/api/invoices/" + encodeURIComponent(invoiceId) + "/notify-email", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email }),
         });
-        if (!resp.ok) {
+        if (resp.ok) {
+            emailInput.dataset.savedValue = email;
+            if (saveBtn) {
+                saveBtn.textContent = "Saved \u2713";
+                saveBtn.classList.add("btn-save-email-success");
+                setTimeout(function () {
+                    saveBtn.textContent = "Save";
+                    saveBtn.classList.remove("btn-save-email-success");
+                    saveBtn.disabled = false;
+                }, 2000);
+            }
+        } else {
             emailInput.value = orig;
-            emailInput.dataset.savedValue = orig;
+            if (saveBtn) { saveBtn.textContent = "Error"; saveBtn.disabled = false; }
         }
     } catch (err) {
         console.error("Failed to save notify email:", err);
         emailInput.value = orig;
-        emailInput.dataset.savedValue = orig;
+        if (saveBtn) { saveBtn.textContent = "Error"; saveBtn.disabled = false; }
+    }
+}
+
+async function disregardInvoice(invoiceId, row, btn) {
+    if (!confirm("Remove this invoice from the dashboard? This cannot be undone from the UI.")) return;
+    btn.disabled = true;
+    btn.textContent = "Removing...";
+    try {
+        const resp = await fetch("/api/invoices/" + encodeURIComponent(invoiceId) + "/disregard", {
+            method: "POST",
+        });
+        if (resp.ok) {
+            row.style.opacity = "0";
+            row.style.transition = "opacity 0.3s";
+            setTimeout(function () { row.remove(); }, 300);
+        } else {
+            btn.textContent = "Error";
+            btn.disabled = false;
+        }
+    } catch (err) {
+        console.error("Failed to disregard invoice:", err);
+        btn.textContent = "Error";
+        btn.disabled = false;
     }
 }
 
@@ -692,6 +750,131 @@ function attachMarginClickHandler() {
     });
 }
 
+function attachInVsOutClickHandler() {
+    const el = document.getElementById("in-vs-out-chart");
+    if (!el || !el.data) return;
+
+    el.on("plotly_click", function (data) {
+        if (!data || !data.points || !data.points.length) return;
+        const point = data.points[0];
+        // curveNumber 0 = Total Invoiced trace
+        if (point.curveNumber === 0) {
+            const month = String(point.x).slice(0, 7);
+            if (month) loadInvoicedBreakdown(month);
+        }
+    });
+}
+
+let invoicedTraceVisible = true;
+
+function toggleTotalInvoiced() {
+    const btn = document.getElementById("invoiced-toggle-btn");
+    invoicedTraceVisible = !invoicedTraceVisible;
+    Plotly.restyle("in-vs-out-chart", { visible: invoicedTraceVisible }, [0]);
+    if (invoicedTraceVisible) {
+        btn.textContent = "◉ Total Invoiced";
+        btn.classList.remove("btn-chart-toggle-off");
+        btn.classList.add("btn-chart-toggle-on");
+    } else {
+        btn.textContent = "○ Total Invoiced";
+        btn.classList.remove("btn-chart-toggle-on");
+        btn.classList.add("btn-chart-toggle-off");
+    }
+}
+
+let marginUseInvoiced = false;
+
+async function toggleMarginMode() {
+    const btn = document.getElementById("margin-mode-btn");
+    marginUseInvoiced = !marginUseInvoiced;
+    if (marginUseInvoiced) {
+        btn.textContent = "◉ Using Invoiced Margin";
+        btn.classList.remove("btn-chart-toggle-off");
+        btn.classList.add("btn-chart-toggle-on");
+    } else {
+        btn.textContent = "○ Use Invoiced Margin";
+        btn.classList.remove("btn-chart-toggle-on");
+        btn.classList.add("btn-chart-toggle-off");
+    }
+    const mode = marginUseInvoiced ? "invoiced" : "collected";
+    try {
+        const resp = await fetch("/api/charts/profit-margin?mode=" + mode);
+        const fig = await resp.json();
+        applyMobileLayout(fig, "profit-margin-chart");
+        Plotly.react("profit-margin-chart", fig.data, fig.layout, {
+            responsive: true,
+            displayModeBar: !isMobile(),
+        });
+        attachMarginClickHandler();
+    } catch (err) {
+        console.error("Failed to toggle margin mode:", err);
+    }
+}
+
+function showInvoicedModal() {
+    document.getElementById("invoiced-breakdown-modal").style.display = "flex";
+}
+
+function hideInvoicedModal() {
+    document.getElementById("invoiced-breakdown-modal").style.display = "none";
+    document.getElementById("invoiced-breakdown-content").innerHTML = "";
+}
+
+async function loadInvoicedBreakdown(month) {
+    document.getElementById("invoiced-modal-title").textContent = "Invoiced Breakdown — Loading...";
+    document.getElementById("invoiced-breakdown-content").innerHTML =
+        '<p style="text-align:center;color:#888;padding:24px;">Loading...</p>';
+    showInvoicedModal();
+
+    try {
+        const resp = await fetch("/api/invoiced-breakdown?month=" + encodeURIComponent(month));
+        const data = await resp.json();
+
+        const [y, mo] = month.split("-");
+        const monthLabel = new Date(Number(y), Number(mo) - 1).toLocaleString("default", { month: "long", year: "numeric" });
+        document.getElementById("invoiced-modal-title").textContent = "Invoiced Breakdown — " + monthLabel;
+
+        const fmt = (n) => "$" + Math.round(Number(n)).toLocaleString("en-US");
+
+        let html = '<div class="invoiced-breakdown-total">Total Invoiced: <strong>' + fmt(data.total) + "</strong></div>";
+
+        if (data.stripe_invoices && data.stripe_invoices.length > 0) {
+            html += '<h3 class="breakdown-section-title">Stripe Invoices — ' + fmt(data.stripe_total) + "</h3>";
+            html += '<div class="invoice-table-container"><table class="invoice-table"><thead><tr>';
+            html += "<th>Client</th><th>Invoice #</th><th class=\"text-right\">Amount</th><th>Status</th>";
+            html += "</tr></thead><tbody>";
+            data.stripe_invoices.forEach(function (inv) {
+                const badgeClass = inv.status === "paid" ? "badge-outstanding" : inv.status === "open" ? "badge-overdue" : "";
+                html += "<tr><td>" + (inv.customer_name || "—") + "</td><td>" + (inv.number || "—") + "</td>" +
+                    "<td class=\"text-right\">" + fmt(inv.amount_due) + "</td>" +
+                    "<td><span class=\"badge " + badgeClass + "\">" + inv.status + "</span></td></tr>";
+            });
+            html += "</tbody></table></div>";
+        }
+
+        if (data.mercury_direct && data.mercury_direct.length > 0) {
+            html += '<h3 class="breakdown-section-title" style="margin-top:20px;">Mercury Direct Payments — ' + fmt(data.mercury_total) + "</h3>";
+            html += '<div class="invoice-table-container"><table class="invoice-table"><thead><tr>';
+            html += "<th>Counterparty</th><th class=\"text-right\">Amount</th>";
+            html += "</tr></thead><tbody>";
+            data.mercury_direct.forEach(function (p) {
+                html += "<tr><td>" + p.counterparty + "</td><td class=\"text-right\">" + fmt(p.amount) + "</td></tr>";
+            });
+            html += "</tbody></table></div>";
+        }
+
+        if ((!data.stripe_invoices || data.stripe_invoices.length === 0) && (!data.mercury_direct || data.mercury_direct.length === 0)) {
+            html += '<p style="color:#888;padding:24px;text-align:center;">No invoiced data for this month.</p>';
+        }
+
+        document.getElementById("invoiced-breakdown-content").innerHTML = html;
+    } catch (err) {
+        console.error("Failed to load invoiced breakdown:", err);
+        document.getElementById("invoiced-breakdown-content").innerHTML =
+            '<p style="color:#e74c3c;padding:24px;text-align:center;">Failed to load breakdown.</p>';
+    }
+}
+
 // --- ARR history modal ---
 
 function showArrModal() {
@@ -819,6 +1002,12 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("modal-close-btn").addEventListener("click", hideModal);
     document.getElementById("spend-detail-modal").addEventListener("click", function (e) {
         if (e.target === this) hideModal();
+    });
+
+    // Close invoiced breakdown modal on X button or backdrop click
+    document.getElementById("invoiced-modal-close-btn").addEventListener("click", hideInvoicedModal);
+    document.getElementById("invoiced-breakdown-modal").addEventListener("click", function (e) {
+        if (e.target === this) hideInvoicedModal();
     });
 
     // Close invoice detail modal on X button or backdrop click

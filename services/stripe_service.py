@@ -29,13 +29,18 @@ def sync_invoices():
     logger.info("Syncing Stripe invoices...")
     count = 0
     try:
-        for invoice in stripe.Invoice.list(limit=100).auto_paging_iter():
+        for invoice in stripe.Invoice.list(limit=100, expand=["data.customer"]).auto_paging_iter():
             customer_name = None
             customer_email = None
-            if invoice.customer_name:
-                customer_name = invoice.customer_name
-            if invoice.customer_email:
-                customer_email = invoice.customer_email
+            # Prefer current customer object data over frozen invoice fields
+            if not isinstance(invoice.customer, str) and invoice.customer:
+                customer_name = invoice.customer.name or invoice.customer_name or None
+                customer_email = invoice.customer.email or invoice.customer_email or None
+            else:
+                if invoice.customer_name:
+                    customer_name = invoice.customer_name
+                if invoice.customer_email:
+                    customer_email = invoice.customer_email
 
             # Extract paid_at from status_transitions if available
             paid_at = None
@@ -148,12 +153,17 @@ def get_balance() -> dict:
 def get_fresh_invoice(invoice_id: str) -> dict | None:
     """Fetch a single invoice directly from Stripe API (for email sending)."""
     try:
-        inv = stripe.Invoice.retrieve(invoice_id)
+        inv = stripe.Invoice.retrieve(invoice_id, expand=["customer"])
+        # Prefer current customer email over frozen invoice email
+        if not isinstance(inv.customer, str) and inv.customer:
+            customer_email = inv.customer.email or inv.customer_email or None
+        else:
+            customer_email = inv.customer_email
         return {
             "id": inv.id,
             "number": inv.number,
             "customer_name": inv.customer_name,
-            "customer_email": inv.customer_email,
+            "customer_email": customer_email,
             "amount_due": inv.amount_due / 100.0,
             "currency": inv.currency,
             "status": inv.status,

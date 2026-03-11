@@ -28,4 +28,12 @@ def init_db():
         conn.execute("ALTER TABLE late_payment_notifications ADD COLUMN notify_email TEXT")
     except sqlite3.OperationalError:
         pass  # column already exists
+    # Create disregarded_invoices table if missing (migration for existing DBs)
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS disregarded_invoices (
+               invoice_id TEXT PRIMARY KEY,
+               disregarded_at TEXT NOT NULL
+           )"""
+    )
+    conn.commit()
     conn.close()

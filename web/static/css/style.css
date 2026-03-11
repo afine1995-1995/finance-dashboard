@@ -404,27 +404,142 @@ main {
     white-space: nowrap;
 }
 
+.notify-email-cell {
+    white-space: nowrap;
+}
+
 .notify-email-input {
-    background: transparent;
-    border: 1px solid transparent;
+    background: #1a1a2e;
+    border: 1px solid #3a3a5a;
     border-radius: 4px;
     color: #ccc;
     font-size: 12px;
-    padding: 3px 6px;
-    width: 200px;
-    transition: border-color 0.15s, background 0.15s;
-}
-
-.notify-email-input:hover {
-    border-color: #4a4a5a;
-    background: #1e1e2e;
+    padding: 4px 8px;
+    width: 180px;
+    transition: border-color 0.15s;
+    vertical-align: middle;
 }
 
 .notify-email-input:focus {
     border-color: #5dade2;
-    background: #1e1e2e;
     outline: none;
     color: #fff;
+}
+
+@media (max-width: 768px) {
+    .notify-email-input {
+        width: 130px;
+        font-size: 11px;
+    }
+}
+
+.btn-save-email {
+    margin-left: 6px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid #3a5a8a;
+    background: transparent;
+    color: #5dade2;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.btn-save-email:hover:not(:disabled) {
+    background: rgba(93, 173, 226, 0.15);
+    border-color: #5dade2;
+}
+
+.btn-save-email:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.btn-save-email-success {
+    border-color: #27ae60 !important;
+    color: #2ecc71 !important;
+}
+
+.btn-disregard {
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid #5a3a3a;
+    background: transparent;
+    color: #888;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.btn-disregard:hover:not(:disabled) {
+    border-color: #e74c3c;
+    color: #e74c3c;
+    background: rgba(231, 76, 60, 0.1);
+}
+
+.btn-disregard:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+/* Chart toggle buttons */
+.chart-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0 4px 0;
+}
+
+.btn-chart-toggle {
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1px solid #4a4a6a;
+    background: transparent;
+    color: #a0a0b8;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.btn-chart-toggle:hover {
+    border-color: #7a7aaa;
+    color: #d0d0e8;
+}
+
+.btn-chart-toggle-on {
+    border-color: #f39c12;
+    color: #f39c12;
+}
+
+.btn-chart-toggle-on:hover {
+    background: rgba(243, 156, 18, 0.1);
+}
+
+.btn-chart-toggle-off {
+    border-color: #4a4a6a;
+    color: #888;
+}
+
+/* Invoiced breakdown modal content */
+.invoiced-breakdown-total {
+    font-size: 18px;
+    color: #f39c12;
+    padding: 12px 0 16px 0;
+    border-bottom: 1px solid #2a2a4a;
+    margin-bottom: 16px;
+}
+
+.breakdown-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #a0a0b8;
+    margin: 0 0 10px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 /* Remind All Overdue button */

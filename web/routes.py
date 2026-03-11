@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, Response, jsonify, render_template, request
 
-from models.queries import get_open_invoices_for_client, get_all_late_invoices, mark_email_sent, upsert_notify_email
+from models.queries import get_open_invoices_for_client, get_all_late_invoices, mark_email_sent, upsert_notify_email, get_invoiced_breakdown, disregard_invoice
 from services.email_service import send_reminder_email
 from services.stripe_service import get_fresh_invoice, get_balance as get_stripe_balance
 from services.mercury_service import get_total_balance as get_mercury_balance
@@ -54,7 +54,8 @@ def chart_in_vs_out():
 
 @bp.route("/api/charts/profit-margin")
 def chart_profit_margin():
-    return Response(build_profit_margin_chart(), mimetype="application/json")
+    mode = request.args.get("mode", "collected")
+    return Response(build_profit_margin_chart(use_invoiced=(mode == "invoiced")), mimetype="application/json")
 
 
 @bp.route("/api/charts/days-to-pay")
@@ -87,6 +88,15 @@ def chart_spend_detail():
     month = request.args.get("month", "")
     category = request.args.get("category", "")
     return Response(build_spend_detail_chart(month, category), mimetype="application/json")
+
+
+@bp.route("/api/invoiced-breakdown")
+def api_invoiced_breakdown():
+    month = request.args.get("month", "")
+    if not month:
+        return jsonify({"error": "month required"}), 400
+    data = get_invoiced_breakdown(month)
+    return jsonify(data)
 
 
 @bp.route("/api/arr-history")
@@ -173,6 +183,7 @@ def api_open_invoices():
             "id": r["id"],
             "number": r["number"],
             "customer_email": r["customer_email"],
+            "notify_email": r["notify_email"],
             "amount_due": r["amount_due"],
             "due_date": r["due_date"],
             "hosted_invoice_url": r["hosted_invoice_url"],
@@ -202,6 +213,12 @@ def api_update_notify_email(invoice_id):
         return jsonify({"error": "email required"}), 400
     upsert_notify_email(invoice_id, email)
     return jsonify({"success": True, "email": email})
+
+
+@bp.route("/api/invoices/<invoice_id>/disregard", methods=["POST"])
+def api_disregard_invoice(invoice_id):
+    disregard_invoice(invoice_id)
+    return jsonify({"success": True})
 
 
 @bp.route("/api/invoices/send-reminder", methods=["POST"])

@@ -273,9 +273,11 @@ def get_all_late_invoices():
         """SELECT si.*, lpn.notify_email
            FROM stripe_invoices si
            LEFT JOIN late_payment_notifications lpn ON si.id = lpn.invoice_id
+           LEFT JOIN disregarded_invoices di ON si.id = di.invoice_id
            WHERE si.status = 'open'
              AND si.due_date < ?
              AND si.amount_due > 0
+             AND di.invoice_id IS NULL
            ORDER BY si.due_date""",
         (now,),
     ).fetchall()
@@ -695,14 +697,28 @@ def get_open_invoices_for_client(customer_name: str):
                   lpn.notify_email
            FROM stripe_invoices si
            LEFT JOIN late_payment_notifications lpn ON si.id = lpn.invoice_id
+           LEFT JOIN disregarded_invoices di ON si.id = di.invoice_id
            WHERE si.status = 'open'
              AND si.amount_due > 0
              AND si.customer_name = ?
+             AND di.invoice_id IS NULL
            ORDER BY si.due_date""",
         (customer_name,),
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def disregard_invoice(invoice_id: str):
+    """Mark an invoice as disregarded so it no longer appears in the dashboard."""
+    now = datetime.now(timezone.utc).isoformat()
+    conn = get_connection()
+    conn.execute(
+        "INSERT OR REPLACE INTO disregarded_invoices (invoice_id, disregarded_at) VALUES (?, ?)",
+        (invoice_id, now),
+    )
+    conn.commit()
+    conn.close()
 
 
 def upsert_notify_email(invoice_id: str, email: str):
@@ -719,19 +735,181 @@ def upsert_notify_email(invoice_id: str, email: str):
     conn.close()
 
 
+def get_monthly_invoiced():
+    """Return monthly invoiced totals as {month: amount}.
+
+    Combines two sources without double-counting:
+    1. Stripe invoices: sum of amount_due grouped by created_at month (non-void).
+    2. Mercury direct payers: monthly inflows from counterparties that are NOT
+       already covered by Stripe invoices (fuzzy name-matched to deduplicate).
+
+    Mercury "STRIPE" entries (batch payouts from Stripe-processed payments) are
+    excluded — those are already captured via Stripe invoice amount_due.
+    """
+    conn = get_connection()
+
+    # 1. All distinct Stripe customer names for dedup
+    stripe_customer_rows = conn.execute(
+        "SELECT DISTINCT customer_name FROM stripe_invoices WHERE customer_name IS NOT NULL"
+    ).fetchall()
+    stripe_names = {r["customer_name"] for r in stripe_customer_rows}
+
+    # 2. Stripe invoiced by month (when invoiced, not when paid)
+    stripe_rows = conn.execute(
+        """SELECT strftime('%Y-%m', created_at) AS month, SUM(amount_due) AS total
+           FROM stripe_invoices
+           WHERE status != 'void'
+             AND amount_due > 0
+             AND created_at IS NOT NULL
+           GROUP BY month
+           ORDER BY month"""
+    ).fetchall()
+    stripe_by_month = {r["month"]: r["total"] for r in stripe_rows}
+
+    # 3. Mercury inflows per counterparty per month — exclude STRIPE payout batches
+    #    and non-revenue items (interest, cashback, insurance, internals, CC charges)
+    mercury_rows = conn.execute(
+        f"""SELECT
+               strftime('%Y-%m', COALESCE(posted_date, created_at)) AS month,
+               counterparty_name,
+               SUM(amount) AS total
+           FROM mercury_transactions
+           WHERE amount > 0
+             AND COALESCE(posted_date, created_at) IS NOT NULL
+             AND status NOT IN ('cancelled', 'failed')
+             AND kind NOT IN ('creditCardTransaction', 'cardInternationalTransactionFee')
+             AND counterparty_name != 'STRIPE'
+             AND counterparty_name NOT LIKE 'Savings Interest%'
+             AND counterparty_name NOT LIKE '%Cashback%'
+             AND counterparty_name NOT LIKE '%ANTHEM%'
+             AND counterparty_name NOT LIKE '%Kaiser%'
+             AND counterparty_name NOT LIKE '%JP Morgan%'
+             {EXCLUDE_INTERNAL}
+           GROUP BY month, counterparty_name
+           ORDER BY month"""
+    ).fetchall()
+    conn.close()
+
+    # Build normalized Stripe name set for fuzzy matching (same logic as
+    # get_active_subscriptions_by_client to stay consistent)
+    def _normalize(name):
+        n = name.lower().strip()
+        for suffix in [", inc.", ", inc", " inc.", " inc", " llc", " ltd"]:
+            if n.endswith(suffix):
+                n = n[:-len(suffix)].strip()
+                break
+        return n
+
+    stripe_names_normalized = {_normalize(n) for n in stripe_names}
+
+    # 4. Sum Mercury direct-payer inflows for counterparties NOT in Stripe
+    mercury_direct_by_month = {}
+    for r in mercury_rows:
+        name = r["counterparty_name"]
+        if not name:
+            continue
+        norm = _normalize(name)
+        # Skip if this counterparty matches a Stripe client name
+        if any(norm == sn or norm in sn or sn in norm for sn in stripe_names_normalized):
+            continue
+        month = r["month"]
+        mercury_direct_by_month[month] = mercury_direct_by_month.get(month, 0) + r["total"]
+
+    # 5. Merge: Stripe invoiced + Mercury direct payer inflows
+    all_months = set(stripe_by_month) | set(mercury_direct_by_month)
+    return {m: stripe_by_month.get(m, 0) + mercury_direct_by_month.get(m, 0)
+            for m in all_months}
+
+
+def get_invoiced_breakdown(month: str):
+    """Return detailed per-invoice breakdown of invoiced amounts for a given month (YYYY-MM)."""
+    conn = get_connection()
+
+    stripe_rows = conn.execute(
+        """SELECT customer_name, number, amount_due, status
+           FROM stripe_invoices
+           WHERE status != 'void'
+             AND amount_due > 0
+             AND strftime('%Y-%m', created_at) = ?
+           ORDER BY amount_due DESC""",
+        (month,),
+    ).fetchall()
+
+    stripe_customer_rows = conn.execute(
+        "SELECT DISTINCT customer_name FROM stripe_invoices WHERE customer_name IS NOT NULL"
+    ).fetchall()
+    stripe_names = {r["customer_name"] for r in stripe_customer_rows}
+
+    mercury_rows = conn.execute(
+        f"""SELECT counterparty_name, SUM(amount) AS total
+           FROM mercury_transactions
+           WHERE amount > 0
+             AND COALESCE(posted_date, created_at) IS NOT NULL
+             AND status NOT IN ('cancelled', 'failed')
+             AND kind NOT IN ('creditCardTransaction', 'cardInternationalTransactionFee')
+             AND counterparty_name != 'STRIPE'
+             AND counterparty_name NOT LIKE 'Savings Interest%'
+             AND counterparty_name NOT LIKE '%Cashback%'
+             AND counterparty_name NOT LIKE '%ANTHEM%'
+             AND counterparty_name NOT LIKE '%Kaiser%'
+             AND counterparty_name NOT LIKE '%JP Morgan%'
+             AND strftime('%Y-%m', COALESCE(posted_date, created_at)) = ?
+             {EXCLUDE_INTERNAL}
+           GROUP BY counterparty_name
+           ORDER BY total DESC""",
+        (month,),
+    ).fetchall()
+    conn.close()
+
+    def _normalize(name):
+        n = name.lower().strip()
+        for suffix in [", inc.", ", inc", " inc.", " inc", " llc", " ltd"]:
+            if n.endswith(suffix):
+                n = n[:-len(suffix)].strip()
+                break
+        return n
+
+    stripe_names_normalized = {_normalize(n) for n in stripe_names}
+
+    mercury_direct = []
+    for r in mercury_rows:
+        name = r["counterparty_name"]
+        if not name:
+            continue
+        norm = _normalize(name)
+        if any(norm == sn or norm in sn or sn in norm for sn in stripe_names_normalized):
+            continue
+        mercury_direct.append({"counterparty": name, "amount": r["total"]})
+
+    stripe_invoices = [dict(r) for r in stripe_rows]
+    stripe_total = sum(r["amount_due"] for r in stripe_rows)
+    mercury_total = sum(r["amount"] for r in mercury_direct)
+
+    return {
+        "month": month,
+        "stripe_invoices": stripe_invoices,
+        "mercury_direct": mercury_direct,
+        "stripe_total": stripe_total,
+        "mercury_total": mercury_total,
+        "total": stripe_total + mercury_total,
+    }
+
+
 def get_open_invoices_by_client():
     """Return open invoices grouped by client, split into outstanding vs overdue."""
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     conn = get_connection()
     rows = conn.execute(
-        """SELECT customer_name,
-               SUM(CASE WHEN due_date >= ? OR due_date IS NULL THEN amount_due ELSE 0 END) AS outstanding,
-               SUM(CASE WHEN due_date < ? THEN amount_due ELSE 0 END) AS overdue
-           FROM stripe_invoices
-           WHERE status = 'open'
-             AND amount_due > 0
-             AND customer_name IS NOT NULL
-           GROUP BY customer_name
+        """SELECT si.customer_name,
+               SUM(CASE WHEN si.due_date >= ? OR si.due_date IS NULL THEN si.amount_due ELSE 0 END) AS outstanding,
+               SUM(CASE WHEN si.due_date < ? THEN si.amount_due ELSE 0 END) AS overdue
+           FROM stripe_invoices si
+           LEFT JOIN disregarded_invoices di ON si.id = di.invoice_id
+           WHERE si.status = 'open'
+             AND si.amount_due > 0
+             AND si.customer_name IS NOT NULL
+             AND di.invoice_id IS NULL
+           GROUP BY si.customer_name
            ORDER BY (outstanding + overdue) DESC""",
         (now, now),
     ).fetchall()

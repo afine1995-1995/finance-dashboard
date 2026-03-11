@@ -13,6 +13,7 @@ from models.queries import (
     get_open_invoices_by_client,
     get_monthly_spend_by_category,
     get_monthly_spend_details,
+    get_monthly_invoiced,
     SPEND_CATEGORIES,
 )
 
@@ -42,21 +43,33 @@ def build_in_vs_out_chart() -> str:
     inflows_by_month = {row["month"]: row["inflows"] for row in data}
     outflows_by_month = {row["month"]: row["outflows"] for row in data}
     distributions_by_month = {row["month"]: row["owner_distributions"] for row in data}
+    invoiced_by_month = get_monthly_invoiced()
 
     months = _chart_months()
     inflows = [inflows_by_month.get(m, 0) for m in months]
     outflows = [outflows_by_month.get(m, 0) for m in months]
     distributions = [distributions_by_month.get(m, 0) for m in months]
+    invoiced = [invoiced_by_month.get(m, 0) for m in months]
 
     # Calculate net (money in minus money out, not including distributions)
     net = [i - o for i, o in zip(inflows, outflows)]
-    label_y = [max(i, o, d) for i, o, d in zip(inflows, outflows, distributions)]
+    label_y = [max(i, o, d, inv) for i, o, d, inv in zip(inflows, outflows, distributions, invoiced)]
     label_text = []
     for n in net:
         sign = "+" if n >= 0 else "-"
         label_text.append(f"{sign}${abs(n):,.0f}")
 
+    INVOICED_COLOR = "#f39c12"
+
     fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=months,
+        y=invoiced,
+        mode="lines+markers",
+        name="Total Invoiced",
+        line=dict(color=INVOICED_COLOR, width=4, dash="dot"),
+        marker=dict(size=10, color=INVOICED_COLOR),
+    ))
     fig.add_trace(go.Scatter(
         x=months,
         y=inflows,
@@ -94,7 +107,9 @@ def build_in_vs_out_chart() -> str:
     ))
 
     # Right-side summary: 12-mo, 6-mo, 3-mo totals for each line
+    # 4 metrics, slightly compressed spacing to fit all on the right panel
     summary_metrics = [
+        {"label": "Total Invoiced",      "values": invoiced,      "color": INVOICED_COLOR},
         {"label": "Money In",            "values": inflows,       "color": GREEN},
         {"label": "Money Out",           "values": outflows,      "color": RED},
         {"label": "Owner Distributions", "values": distributions, "color": BLUE},
@@ -105,25 +120,24 @@ def build_in_vs_out_chart() -> str:
         {"n": 3,  "label": "3-mo"},
     ]
 
-    # Starting y position (paper coords), shifted down to avoid legend overlap
-    y_starts = [0.78, 0.48, 0.18]
+    # 4 metrics at 0.24 spacing, period rows at 0.05 intervals
+    y_starts = [0.88, 0.64, 0.40, 0.16]
     for metric, y_base in zip(summary_metrics, y_starts):
-        # Metric label
         fig.add_annotation(
             text=f"<b>{metric['label']}</b>",
             xref="paper", yref="paper",
             x=1.02, y=y_base,
             showarrow=False, xanchor="left",
-            font=dict(color=metric["color"], size=13),
+            font=dict(color=metric["color"], size=12),
         )
         for j, period in enumerate(periods):
             total = sum(metric["values"][-period["n"]:])
             fig.add_annotation(
                 text=f"{period['label']}:  <b>${total:,.0f}</b>",
                 xref="paper", yref="paper",
-                x=1.02, y=y_base - 0.06 - (j * 0.06),
+                x=1.02, y=y_base - 0.05 - (j * 0.05),
                 showarrow=False, xanchor="left",
-                font=dict(color=TEXT_COLOR, size=12),
+                font=dict(color=TEXT_COLOR, size=11),
             )
 
     fig.update_layout(
@@ -151,12 +165,15 @@ def build_in_vs_out_chart() -> str:
             zeroline=False,
         ),
         legend=dict(
-            font=dict(color=TEXT_COLOR, size=13),
+            font=dict(color=TEXT_COLOR, size=12),
             bgcolor="rgba(0,0,0,0)",
+            orientation="h",
+            x=0.5, xanchor="center",
+            y=-0.18, yanchor="top",
         ),
         paper_bgcolor=BG_COLOR,
         plot_bgcolor=BG_COLOR,
-        margin=dict(l=70, r=220, t=80, b=50),
+        margin=dict(l=70, r=230, t=80, b=100),
         hoverlabel=dict(
             bgcolor="#2a2a4a",
             font_color=TEXT_COLOR,
@@ -166,8 +183,12 @@ def build_in_vs_out_chart() -> str:
     return plotly.io.to_json(fig)
 
 
-def build_profit_margin_chart() -> str:
-    """Build a dark-mode profit margin chart. Margin = (Money In - Money Out) / Money In."""
+def build_profit_margin_chart(use_invoiced: bool = False) -> str:
+    """Build a dark-mode profit margin chart.
+
+    When use_invoiced=True, uses Total Invoiced as the revenue figure instead of
+    Money In (collected). Margin = (Revenue - Money Out) / Revenue * 100.
+    """
     data = get_mercury_monthly_flows()
     inflows_by_month = {row["month"]: row["inflows"] for row in data}
     outflows_by_month = {row["month"]: row["outflows"] for row in data}
@@ -176,10 +197,16 @@ def build_profit_margin_chart() -> str:
     inflows = [inflows_by_month.get(m, 0) for m in months]
     outflows = [outflows_by_month.get(m, 0) for m in months]
 
+    if use_invoiced:
+        invoiced_by_month = get_monthly_invoiced()
+        revenue = [invoiced_by_month.get(m, 0) for m in months]
+    else:
+        revenue = inflows
+
     margins = []
-    for i, o in zip(inflows, outflows):
-        if i > 0:
-            margins.append(round((i - o) / i * 100, 1))
+    for r, o in zip(revenue, outflows):
+        if r > 0:
+            margins.append(round((r - o) / r * 100, 1))
         else:
             margins.append(0)
 
@@ -233,9 +260,10 @@ def build_profit_margin_chart() -> str:
                 align="center",
             )
 
+    title_text = "Net Profit Margin by Month (Invoiced)" if use_invoiced else "Net Profit Margin by Month"
     fig.update_layout(
         title=dict(
-            text="Net Profit Margin by Month",
+            text=title_text,
             font=dict(size=22, color=TEXT_COLOR),
             x=0.5,
             y=0.98,
