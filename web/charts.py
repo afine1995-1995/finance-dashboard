@@ -276,6 +276,10 @@ def build_profit_margin_chart(use_invoiced: bool = False) -> str:
             linecolor=GRID_COLOR,
             zeroline=True,
             zerolinecolor=GRID_COLOR,
+            range=[
+                min(0, min(margins) - 5) if margins else -5,
+                max(margins) * 1.20 if margins else 100,
+            ],
         ),
         paper_bgcolor=BG_COLOR,
         plot_bgcolor=BG_COLOR,
