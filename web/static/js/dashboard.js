@@ -233,6 +233,17 @@ function applyMobileLayout(fig, elementId) {
     }
 
     // --- Traces ---
+    function abbreviateDollarLabel(s) {
+        if (!s) return s;
+        var match = s.match(/^\$([0-9,]+)$/);
+        if (!match) return s;
+        var n = parseInt(match[1].replace(/,/g, ""), 10);
+        if (isNaN(n)) return s;
+        if (n >= 1000000) return "$" + (n / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+        if (n >= 1000) return "$" + Math.round(n / 1000) + "K";
+        return s;
+    }
+
     if (fig.data) {
         fig.data.forEach(function (trace) {
             // Hide text-only scatter traces (net labels on in-vs-out)
@@ -249,6 +260,11 @@ function applyMobileLayout(fig, elementId) {
             // Shrink all trace text
             if (trace.textfont) {
                 trace.textfont.size = Math.min(trace.textfont.size || 12, 9);
+            }
+
+            // Abbreviate dollar labels (e.g. $280,400 → $280K)
+            if (Array.isArray(trace.text)) {
+                trace.text = trace.text.map(abbreviateDollarLabel);
             }
         });
     }
