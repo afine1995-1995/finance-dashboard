@@ -197,7 +197,11 @@ function applyMobileLayout(fig, elementId) {
             b: 40
         };
     } else {
-        fig.layout.margin = { l: 35, r: 8, t: hasTopAnnotations ? 50 : 30, b: 60 };
+        var hasBottomLegend = fig.layout.legend && typeof fig.layout.legend.y === "number" && fig.layout.legend.y < 0;
+        fig.layout.margin = { l: 35, r: 8, t: hasTopAnnotations ? 50 : 30, b: hasBottomLegend ? 90 : 60 };
+        if (hasBottomLegend) {
+            fig.layout.legend.y = -0.30;
+        }
     }
 
     // Cap explicit height for horizontal bar charts (skip scrollable charts)
@@ -255,6 +259,12 @@ function applyMobileLayout(fig, elementId) {
             // Horizontal bar "outside" text clips off-screen — use auto
             if (trace.textposition === "outside" && hasHorizontalBars) {
                 trace.textposition = "auto";
+            }
+
+            // Vertical bar "outside" text clips at SVG top on mobile — move inside
+            if (trace.type === "bar" && !hasHorizontalBars && trace.textposition === "outside") {
+                trace.textposition = "inside";
+                trace.insidetextanchor = "end";
             }
 
             // Shrink all trace text

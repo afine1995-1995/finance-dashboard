@@ -698,6 +698,16 @@ main {
         font-size: 1.1rem;
     }
 
+    .btn-arr-toggle {
+        font-size: 0.6rem;
+        padding: 2px 7px;
+        margin-top: 3px;
+        white-space: nowrap;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
     /* Charts — edge-to-edge inside card */
     .chart-container {
         padding: 0;
