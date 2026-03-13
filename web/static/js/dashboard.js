@@ -209,6 +209,9 @@ function applyMobileLayout(fig, elementId) {
         fig.layout.height = Math.min(fig.layout.height, 350);
     }
 
+    // --- Disable zoom/pan interactions on mobile ---
+    fig.layout.dragmode = false;
+
     // --- Title ---
     if (fig.layout.title && fig.layout.title.font) {
         fig.layout.title.font.size = 13;
@@ -287,7 +290,8 @@ async function loadChart(url, elementId, opts = {}) {
         applyMobileLayout(fig, elementId);
         Plotly.newPlot(elementId, fig.data, fig.layout, {
             responsive: opts.responsive !== false,
-            displayModeBar: !isMobile()
+            displayModeBar: !isMobile(),
+            scrollZoom: false
         });
     } catch (err) {
         console.error(`Failed to load chart ${elementId}:`, err);
@@ -371,7 +375,8 @@ async function loadSpendDetail(month, category) {
         showModal();
         Plotly.newPlot("spend-detail-chart", fig.data, fig.layout, {
             responsive: true,
-            displayModeBar: !isMobile()
+            displayModeBar: !isMobile(),
+            scrollZoom: false
         });
     } catch (err) {
         console.error("Failed to load spend detail:", err);
@@ -859,6 +864,7 @@ async function toggleMarginMode() {
         Plotly.react("profit-margin-chart", fig.data, fig.layout, {
             responsive: true,
             displayModeBar: !isMobile(),
+            scrollZoom: false,
         });
         attachMarginClickHandler();
     } catch (err) {
